@@ -24,9 +24,7 @@ Ogni intervallo specifica:
 - **ora di fine** — orario in cui l'intervallo termina
 - **temperatura target** — temperatura desiderata in gradi Celsius, con una cifra decimale (es. `20.5`)
 
-Gli orari degli intervalli sono espressi in **UTC** e nel formato **`HH:mm`** (ore e minuti su 24 ore, es. `06:00`, `18:30`). Il sistema confronta l'ora corrente in UTC con gli intervalli del calendario, eliminando qualsiasi ambiguità legata al cambio ora legale/solare.
-
-**Visualizzazione nel front-end.** I servizi di back-end usano e memorizzano gli orari esclusivamente in UTC. Il front-end è responsabile della conversione nell'**ora locale** del dispositivo dell'utente al momento della visualizzazione, e della riconversione in UTC prima dell'invio al back-end. Per un utente in Italia questo significa applicare l'offset **+1** rispetto a UTC durante l'ora solare e **+2** durante l'ora legale (CEST). Il formato mostrato all'utente resta **`HH:mm`**. Esempio: un intervallo memorizzato come `05:00`–`07:00` UTC viene mostrato in Italia come `06:00`–`08:00` in ora solare e `07:00`–`09:00` in ora legale.
+Gli orari degli intervalli sono espressi in **UTC**. Il sistema confronta l'ora corrente in UTC con gli intervalli del calendario, eliminando qualsiasi ambiguità legata al cambio ora legale/solare.
 
 ### 2.4 Comportamento in assenza di intervalli
 
@@ -265,7 +263,31 @@ L'applicazione espone una serie di endpoint REST utilizzati da un front-end per 
 
 Tutti gli endpoint REST del backend richiedono l'header `X-API-Key` con una chiave presente nella configurazione `api_keys`. Una richiesta senza chiave o con chiave non autorizzata restituisce HTTP `401 Unauthorized`.
 
-### 7.1 Configurazione
+### 7.1 Stato corrente
+
+| Metodo | Endpoint | Descrizione |
+|---|---|---|
+| `GET` | `/stato` | Restituisce lo stato corrente del termostato |
+
+Il servizio esegue a ogni richiesta le seguenti letture:
+
+1. legge `temperatura` dal client REST del sensore di temperatura;
+2. calcola `temperatura_target` dalla configurazione runtime: usa `temperatura_override` se `override_attivo = true`, altrimenti risolve l'intervallo attivo del calendario in UTC;
+3. legge `relay_acceso` direttamente dal client REST del relay.
+
+Response di esempio:
+
+```json
+{
+  "temperatura": 19.0,
+  "temperatura_target": 20.5,
+  "relay_acceso": false
+}
+```
+
+Se non è attivo alcun override e non esiste un intervallo calendario attivo, `temperatura_target` vale `null`. Il servizio non mantiene una copia in memoria dello stato del relay. Gli errori di lettura del sensore o del relay producono HTTP `500 Internal Server Error` con il formato di errore REST standard.
+
+### 7.2 Configurazione
 
 | Metodo | Endpoint | Descrizione |
 |---|---|---|
@@ -274,7 +296,7 @@ Tutti gli endpoint REST del backend richiedono l'header `X-API-Key` con una chia
 | `GET` | `/config/calendario` | Restituisce il calendario settimanale |
 | `PUT` | `/config/calendario` | Aggiorna il calendario settimanale |
 
-### 7.2 Log di polling
+### 7.3 Log di polling
 
 | Metodo | Endpoint | Descrizione |
 |---|---|---|
@@ -289,7 +311,7 @@ Tutti gli endpoint REST del backend richiedono l'header `X-API-Key` con una chia
 
 Se nessun parametro viene passato, il servizio restituisce i log del **giorno corrente** in UTC. Se viene passato solo `da`, il limite superiore è la fine del giorno corrente.
 
-### 7.3 Log di errore
+### 7.4 Log di errore
 
 | Metodo | Endpoint | Descrizione |
 |---|---|---|
@@ -360,7 +382,7 @@ Lo stato corrente della caldaia utilizzato nella logica di isteresi (zona neutra
 | RF-18 | Ad ogni ciclo di polling il sistema scrive un record di log su database |
 | RF-19 | Il record di log contiene: `data_ora`, `caldaia_accesa`, `temperatura_rilevata`, `temperatura_target`, `override_attivo` e, se l'override è attivo, `temperatura_override` |
 | RF-20 | Il sistema mantiene una tabella separata per i log di errore, con i campi: `data_ora`, `tipo_errore`, `caldaia_accesa` (se disponibile), `temperatura_rilevata` (se disponibile), `num_errori_consecutivi` |
-| RF-24 | Gli orari degli intervalli del calendario sono espressi in UTC, nel formato `HH:mm` |
+| RF-24 | Gli orari degli intervalli del calendario sono espressi in UTC |
 | RF-25 | Il sistema confronta l'ora corrente in UTC con gli intervalli del calendario |
 | RF-26 | La durata di conservazione dei log è configurabile tramite il parametro `retention_log_giorni` |
 | RF-27 | Un processo dedicato viene eseguito ogni ora e cancella i record di log più vecchi di `retention_log_giorni` giorni, sia dalla tabella dei log di polling che da quella dei log di errore |
@@ -376,9 +398,7 @@ Lo stato corrente della caldaia utilizzato nella logica di isteresi (zona neutra
 | RF-37 | All'avvio il sistema verifica l'esistenza del file di database: se non esiste lo crea (con le directory intermedie) e ne inizializza lo schema; se esiste lo utilizza senza reinizializzare i dati |
 | RF-38 | La configurazione contiene l'elenco `api_keys` delle chiavi autorizzate per le richieste REST inbound |
 | RF-39 | Ogni richiesta REST deve presentare nell'header `X-API-Key` una chiave presente in `api_keys`; in caso di chiave assente o non valida il backend restituisce HTTP 401 Unauthorized |
-| RF-40 | I servizi di back-end trattano, memorizzano e restituiscono tutti gli orari e i timestamp esclusivamente in UTC |
-| RF-41 | Il front-end mostra gli orari e i timestamp convertiti nell'ora locale del dispositivo dell'utente (per l'Italia: UTC+1 in ora solare, UTC+2 in ora legale) e li riconverte in UTC prima dell'invio al back-end |
-| RF-42 | Gli orari sono rappresentati e visualizzati nel formato `HH:mm` |
+| RF-40 | L'applicazione espone `GET /stato`, che legge a ogni richiesta temperatura dal sensore, target attivo dalla configurazione/calendario e stato corrente dal relay; senza target attivo restituisce `temperatura_target = null` |
 
 ---
 
@@ -391,7 +411,6 @@ Lo stato corrente della caldaia utilizzato nella logica di isteresi (zona neutra
 | RNF-03 | Il sistema deve essere robusto in caso di configurazione mancante o malformata |
 | RNF-04 | Il sistema deve gestire in modo controllato gli errori di comunicazione con le API esterne |
 | RNF-05 | L'applicativo è distribuito come singolo jar eseguibile da console e richiede sulla macchina di destinazione unicamente un runtime Java, senza server di database esterni né container |
-| RNF-06 | Il front-end gestisce correttamente la conversione UTC ↔ ora locale, incluso il passaggio ora legale/solare, senza richiedere modifiche al back-end |
 
 ---
 

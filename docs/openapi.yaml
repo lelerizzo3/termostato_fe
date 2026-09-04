@@ -16,7 +16,7 @@ info:
     per lo scenario E2E. Il client ntfy e gli endpoint configurati per i
     dispositivi fisici sono integrazioni outbound e non fanno parte di questa
     specifica inbound.
-  version: 1.0.0
+  version: 1.1.0
   contact:
     name: Team Termostato
 servers:
@@ -31,6 +31,8 @@ tags:
     description: Configurazione runtime e calendario settimanale
   - name: Log
     description: Log dei cicli di polling e degli errori
+  - name: Stato
+    description: Stato corrente letto da sensore, configurazione e relay
   - name: Actuator
     description: Endpoint operativi Spring Boot Actuator
   - name: Mock
@@ -237,6 +239,50 @@ paths:
                   $ref: '#/components/schemas/ErrorLogRecord'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /stato:
+    get:
+      tags: [Stato]
+      summary: Legge lo stato corrente del termostato
+      description: |
+        Legge in tempo reale la temperatura dal sensore e lo stato dal relay.
+        `temperatura_target` è il target risolto dalla configurazione al momento
+        della richiesta: override se attivo, altrimenti intervallo calendario
+        UTC corrente. È `null` quando non esiste alcun target attivo.
+      operationId: getCurrentState
+      responses:
+        '200':
+          description: Stato corrente del termostato
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [temperatura, temperatura_target, relay_acceso]
+                properties:
+                  temperatura:
+                    type: number
+                    format: double
+                    description: Temperatura rilevata dal sensore in °C.
+                    example: 19.0
+                  temperatura_target:
+                    type: number
+                    format: double
+                    nullable: true
+                    description: Target configurato e attivo in °C; null senza target.
+                    example: 20.5
+                  relay_acceso:
+                    type: boolean
+                    description: Stato letto direttamente dal relay.
+                    example: false
+              example:
+                temperatura: 19.0
+                temperatura_target: 20.5
+                relay_acceso: false
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
