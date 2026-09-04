@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color: #e2e8f0;
+    background: #0f172a;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  * { box-sizing: border-box; }
+  html, body, #root { min-height: 100%; margin: 0; }
+  body { min-width: 320px; background: #0f172a; }
+  button, input, select { font: inherit; }
+  button { -webkit-tap-highlight-color: transparent; }
+}
+
+@layer components {
+  .app-card { @apply rounded-2xl border border-slate-700 bg-slate-800/90 p-4 shadow-sm; }
+  .section-title { @apply mb-3 text-xs font-bold uppercase tracking-wider text-slate-400; }
+  .field-label { @apply text-sm text-slate-400; }
+  .field-input { @apply min-h-11 w-full rounded-xl border border-slate-600 bg-slate-700 px-3 py-2 text-right text-slate-100 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-400/30; }
+  .field-input-left { @apply text-left; }
+  .btn-primary { @apply min-h-11 rounded-xl bg-orange-500 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-secondary { @apply min-h-11 rounded-xl border border-slate-600 bg-slate-700 px-4 py-2 font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-danger { @apply min-h-11 rounded-xl border border-red-500/60 px-4 py-2 font-semibold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50; }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Recharts deve restare leggibile anche su viewport iPhone stretti. */
+.recharts-responsive-container { min-height: 260px; }
