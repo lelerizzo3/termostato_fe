@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Termostato — Mockup schermate</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#1e293b; --card2:#273449; --line:#334155;
+    --txt:#e2e8f0; --muted:#94a3b8; --accent:#f97316; --accent2:#38bdf8;
+    --on:#22c55e; --off:#64748b; --err:#ef4444; --warn:#f59e0b;
+    --blue:#3b82f6;
+  }
+  *{box-sizing:border-box; -webkit-font-smoothing:antialiased;}
+  body{margin:0; background:#0b1020; font-family:-apple-system,"SF Pro Text",Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+  .grid{display:flex; flex-wrap:wrap; gap:28px; padding:28px; justify-content:center;}
+  .phone{
+    width:380px; height:800px; background:var(--bg); border-radius:44px;
+    border:12px solid #000; position:relative; overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .notch{position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:150px; height:28px; background:#000; border-radius:0 0 18px 18px; z-index:20;}
+  .status{height:52px; display:flex; align-items:flex-end; justify-content:space-between;
+    padding:0 26px 6px; color:var(--txt); font-size:13px; font-weight:600;}
+  .screen{height:calc(100% - 52px); display:flex; flex-direction:column;}
+  .appbar{padding:10px 18px; display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--line);}
+  .appbar h1{font-size:18px; margin:0; color:var(--txt);}
+  .health{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted);}
+  .dot{width:9px;height:9px;border-radius:50%;}
+  .dot.up{background:var(--on);} .dot.down{background:var(--err);}
+  .content{flex:1; overflow:auto; padding:16px; display:flex; flex-direction:column; gap:14px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 16px;}
+  .card h2{font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 10px;}
+  .row{display:flex; align-items:center; justify-content:space-between; padding:9px 0; color:var(--txt); font-size:15px;}
+  .row + .row{border-top:1px solid var(--line);}
+  .label{color:var(--muted); font-size:14px;}
+  .val{font-weight:600;}
+  .toggle{width:44px;height:26px;border-radius:20px;background:var(--off);position:relative;}
+  .toggle.on{background:var(--accent);}
+  .knob{position:absolute; top:3px; width:20px;height:20px;border-radius:50%;background:#fff; transition:.2s;}
+  .toggle .knob{left:3px;} .toggle.on .knob{left:21px;}
+  .input{background:var(--card2); border:1px solid var(--line); border-radius:10px;
+    padding:8px 12px; color:var(--txt); font-size:15px; min-width:96px; text-align:right;}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;}
+  .pill.on{background:rgba(34,197,94,.15); color:var(--on);}
+  .pill.off{background:rgba(100,116,139,.2); color:var(--muted);}
+  .btn{background:var(--accent); color:#fff; border:none; border-radius:12px; padding:13px; font-size:16px; font-weight:600; width:100%;}
+  .btn.sec{background:var(--card2); color:var(--txt); border:1px solid var(--line);}
+  .btn.danger{background:transparent;color:var(--err);border:1px solid var(--err);}
+  .tabbar{display:flex; border-top:1px solid var(--line); background:var(--card);}
+  .tab{flex:1; text-align:center; padding:10px 0 16px; color:var(--muted); font-size:11px;}
+  .tab .ic{font-size:20px; display:block; margin-bottom:2px;}
+  .tab.active{color:var(--accent);}
+  .big{font-size:44px;font-weight:700;color:var(--txt);line-height:1;}
+  .unit{font-size:20px;color:var(--muted);font-weight:500;}
+  .sub{color:var(--muted);font-size:13px;}
+  .hint{font-size:11px;color:var(--muted);margin-top:6px;}
+  .badge{font-size:10px;padding:2px 7px;border-radius:6px;background:var(--card2);color:var(--muted);border:1px solid var(--line);}
+  .logcard{display:flex;justify-content:space-between;align-items:flex-start;}
+  .time{font-variant-numeric:tabular-nums;}
+  .err-item{border-left:3px solid var(--err); padding-left:12px;}
+  .caption{position:absolute;bottom:-24px;left:0;right:0;text-align:center;color:#64748b;font-size:13px;}
+  .wrap{position:relative;}
+  .daylist .day{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line);}
+  .daylist .day:first-child{border-top:none;}
+  .slot{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px;color:var(--txt);margin-left:6px;}
+  .muted{color:var(--muted);}
+  svg{display:block;}
+  .modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:24px;z-index:15;}
+  .modal{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;width:100%;}
+  .lock{font-size:40px;text-align:center;margin-bottom:6px;}
+</style>
+</head>
+<body>
+<div class="grid">
+
+  <!-- 1. CONFIG -->
+  <div class="wrap">
+  <div class="phone" id="s-config">
+    <div class="notch"></div>
+    <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
+    <div class="screen">
+      <div class="appbar"><h1>Configurazione</h1><span class="health"><span class="dot up"></span>Backend UP</span></div>
+      <div class="content">
+        <div class="card">
+          <h2>Regolazione</h2>
+          <div class="row"><span class="label">Soglia attivazione</span><span class="input">0.3 °C</span></div>
+          <div class="row"><span class="label">Polling</span><span class="input">60 s</span></div>
+        </div>
+        <div class="card">
+          <h2>Override manuale</h2>
+          <div class="row"><span class="label">Override attivo</span><span class="toggle on"><span class="knob"></span></span></div>
+          <div class="row"><span class="label">Temp. override</span><span class="input">20.5 °C</span></div>
+          <div class="hint">Con override attivo il calendario viene ignorato.</div>
+        </div>
+        <div class="card">
+          <h2>Sicurezza & log</h2>
+          <div class="row"><span class="label">Max errori consec.</span><span class="input">3</span></div>
+          <div class="row"><span class="label">Retention log</span><span class="input">30 gg</span></div>
+        </div>
+        <div class="card">
+          <h2>Notifiche ntfy</h2>
+          <div class="row"><span class="label">Debug mode</span><span class="toggle"><span class="knob"></span></span></div>
+          <div class="row"><span class="label">Topic</span><span class="val">sliverd</span></div>
+        </div>
+        <div class="card">
+          <h2>Sistema</h2>
+          <div class="row"><span class="label">Database path <span class="badge">solo lettura</span></span></div>
+          <div class="row"><span class="muted" style="font-size:13px">./data/termostato.db</span></div>
+        </div>
+        <button class="btn">Salva configurazione</button>
+      </div>
+      <div class="tabbar">
+        <div class="tab active"><span class="ic">⚙️</span>Config</div>
+        <div class="tab"><span class="ic">📅</span>Calendario</div>
+        <div class="tab"><span class="ic">📈</span>Log</div>
+        <div class="tab"><span class="ic">⚠️</span>Errori</div>
+        <div class="tab"><span class="ic">🔑</span>Impostaz.</div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">1 — Configurazione</div>
+  </div>
+
+  <!-- 2. CALENDARIO -->
+  <div class="wrap">
+  <div class="phone" id="s-cal">
+    <div class="notch"></div>
+    <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
+    <div class="screen">
+      <div class="appbar"><h1>Calendario</h1><span class="health"><span class="badge">ora locale</span></span></div>
+      <div class="content">
+        <!-- giorno espanso -->
+        <div class="card" style="border-color:var(--accent)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="val" style="font-size:16px">Lunedì</div>
+            <span class="sub">4 intervalli ▴</span>
+          </div>
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="input" style="min-width:0;flex:1">06:00</span><span class="muted">–</span>
+              <span class="input" style="min-width:0;flex:1">08:00</span>
+              <span class="input" style="min-width:0;flex:1">20.5°</span>
+              <span style="color:var(--err);font-size:18px">×</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="input" style="min-width:0;flex:1">08:00</span><span class="muted">–</span>
+              <span class="input" style="min-width:0;flex:1">12:00</span>
+              <span class="input" style="min-width:0;flex:1">19.0°</span>
+              <span style="color:var(--err);font-size:18px">×</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="input" style="min-width:0;flex:1">12:00</span><span class="muted">–</span>
+              <span class="input" style="min-width:0;flex:1">18:00</span>
+              <span class="input" style="min-width:0;flex:1">20.0°</span>
+              <span style="color:var(--err);font-size:18px">×</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="input" style="min-width:0;flex:1">18:00</span><span class="muted">–</span>
+              <span class="input" style="min-width:0;flex:1">23:00</span>
+              <span class="input" style="min-width:0;flex:1">21.0°</span>
+              <span style="color:var(--err);font-size:18px">×</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn sec" style="flex:1">+ Intervallo</button>
+            <button class="btn sec" style="flex:1">Copia su…</button>
+          </div>
+        </div>
+        <!-- giorni collassati -->
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="val">Martedì</span><span class="sub">4 intervalli ▾</span></div></div>
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="val">Mercoledì</span><span class="sub">4 intervalli ▾</span></div></div>
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="val">Giovedì</span><span class="sub">5 intervalli ▾</span></div></div>
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="val">Venerdì</span><span class="sub">4 intervalli ▾</span></div></div>
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="val">Sabato</span><span class="sub">6 intervalli ▾</span></div></div>
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="val">Domenica</span><span class="sub">6 intervalli ▾</span></div></div>
+        <div class="hint" style="text-align:center">Orari in ora locale (Italia UTC+1/+2) · salvati in UTC</div>
+        <button class="btn">Salva calendario</button>
+      </div>
+      <div class="tabbar">
+        <div class="tab"><span class="ic">⚙️</span>Config</div>
+        <div class="tab active"><span class="ic">📅</span>Calendario</div>
+        <div class="tab"><span class="ic">📈</span>Log</div>
+        <div class="tab"><span class="ic">⚠️</span>Errori</div>
+        <div class="tab"><span class="ic">🔑</span>Impostaz.</div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">2 — Calendario settimanale</div>
+  </div>
+
+  <!-- 3. LOG con grafico -->
+  <div class="wrap">
+  <div class="phone" id="s-log">
+    <div class="notch"></div>
+    <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
+    <div class="screen">
+      <div class="appbar"><h1>Log polling</h1><span class="health"><span class="dot up"></span></span></div>
+      <div class="content">
+        <div class="card">
+          <div class="row" style="padding-top:0"><span class="label">Da</span><span class="input">04/09</span><span class="label">A</span><span class="input">04/09</span></div>
+        </div>
+        <div class="card">
+          <h2>Andamento temperatura</h2>
+          <svg width="100%" height="150" viewBox="0 0 320 150">
+            <!-- gridlines -->
+            <line x1="0" y1="30" x2="320" y2="30" stroke="#334155" stroke-width="1"/>
+            <line x1="0" y1="70" x2="320" y2="70" stroke="#334155" stroke-width="1"/>
+            <line x1="0" y1="110" x2="320" y2="110" stroke="#334155" stroke-width="1"/>
+            <!-- ON band -->
+            <rect x="0" y="0" width="120" height="150" fill="rgba(249,115,22,.10)"/>
+            <!-- target dashed -->
+            <polyline points="0,55 320,55" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="6 5"/>
+            <!-- rilevata -->
+            <polyline points="0,95 40,88 80,78 120,60 160,52 200,48 240,50 280,54 320,58"
+              fill="none" stroke="#f97316" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+            <text x="6" y="20" fill="#94a3b8" font-size="10">°C</text>
+          </svg>
+          <div style="display:flex;gap:16px;margin-top:8px;font-size:11px">
+            <span style="color:#f97316">● rilevata</span>
+            <span style="color:#38bdf8">- - target</span>
+            <span style="color:#94a3b8">▨ caldaia ON</span>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
+            <div><div class="val">Dettaglio record</div><div class="sub">1440 voci nel range</div></div>
+            <button class="btn sec" style="width:auto;padding:9px 14px">Mostra dettaglio ▾</button>
+          </div>
+        </div>
+        <div class="hint" style="text-align:center">Vista di default: solo grafico. La tabella dei singoli record è disponibile su richiesta.</div>
+      </div>
+      <div class="tabbar">
+        <div class="tab"><span class="ic">⚙️</span>Config</div>
+        <div class="tab"><span class="ic">📅</span>Calendario</div>
+        <div class="tab active"><span class="ic">📈</span>Log</div>
+        <div class="tab"><span class="ic">⚠️</span>Errori</div>
+        <div class="tab"><span class="ic">🔑</span>Impostaz.</div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">3 — Log di polling con grafico</div>
+  </div>
+
+  <!-- 4. ERRORI -->
+  <div class="wrap">
+  <div class="phone" id="s-err">
+    <div class="notch"></div>
+    <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
+    <div class="screen">
+      <div class="appbar"><h1>Log errori</h1><span class="health"><span class="dot up"></span></span></div>
+      <div class="content">
+        <div class="card">
+          <div class="row" style="padding-top:0"><span class="label">Da</span><span class="input">04/09</span><span class="label">A</span><span class="input">04/09</span></div>
+        </div>
+        <div class="card err-item">
+          <div class="logcard"><div><div class="val" style="color:#ef4444">Lettura temperatura</div><div class="sub">consecutivi: 1 · caldaia OFF</div></div><div class="time sub">10:02</div></div>
+        </div>
+        <div class="card err-item">
+          <div class="logcard"><div><div class="val" style="color:#ef4444">Lettura temperatura</div><div class="sub">consecutivi: 2 · caldaia OFF</div></div><div class="time sub">10:03</div></div>
+        </div>
+        <div class="card err-item" style="border-left-color:#f59e0b">
+          <div class="logcard"><div><div class="val" style="color:#f59e0b">Comando accensione</div><div class="sub">consecutivi: 3 · messa in sicurezza</div></div><div class="time sub">10:04</div></div>
+        </div>
+        <div class="card">
+          <div class="logcard"><div><div class="val muted">Nessun altro errore</div><div class="sub">nel range selezionato</div></div></div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tab"><span class="ic">⚙️</span>Config</div>
+        <div class="tab"><span class="ic">📅</span>Calendario</div>
+        <div class="tab"><span class="ic">📈</span>Log</div>
+        <div class="tab active"><span class="ic">⚠️</span>Errori</div>
+        <div class="tab"><span class="ic">🔑</span>Impostaz.</div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">4 — Log di errore</div>
+  </div>
+
+  <!-- 5. IMPOSTAZIONI / API KEY -->
+  <div class="wrap">
+  <div class="phone" id="s-set">
+    <div class="notch"></div>
+    <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
+    <div class="screen">
+      <div class="appbar"><h1>Impostazioni</h1><span class="health"><span class="dot up"></span></span></div>
+      <div class="content">
+        <div class="card">
+          <h2>API-key</h2>
+          <div class="row"><span class="label">Stato</span><span class="pill on">Impostata</span></div>
+          <div class="row"><span class="label">Chiave</span><span class="val">••••••••••3f2a</span></div>
+          <div class="hint">Salvata nel browser (localStorage) di questo dispositivo.</div>
+        </div>
+        <div class="card">
+          <h2>Sostituisci chiave</h2>
+          <div class="row"><input class="input" style="width:100%;text-align:left" type="password" placeholder="Nuova API-key" value="••••••••"></div>
+          <button class="btn" style="margin-top:10px">Salva e verifica</button>
+        </div>
+        <button class="btn danger">Rimuovi chiave</button>
+        <div class="card">
+          <h2>Backend</h2>
+          <div class="row"><span class="label">Stato</span><span class="pill on">UP</span></div>
+          <div class="row"><span class="label">Endpoint</span><span class="muted" style="font-size:12px">/termostato/api</span></div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tab"><span class="ic">⚙️</span>Config</div>
+        <div class="tab"><span class="ic">📅</span>Calendario</div>
+        <div class="tab"><span class="ic">📈</span>Log</div>
+        <div class="tab"><span class="ic">⚠️</span>Errori</div>
+        <div class="tab active"><span class="ic">🔑</span>Impostaz.</div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">5 — Impostazioni / API-key</div>
+  </div>
+
+  <!-- 6. GATE API KEY -->
+  <div class="wrap">
+  <div class="phone" id="s-gate">
+    <div class="notch"></div>
+    <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
+    <div class="screen">
+      <div class="appbar"><h1>Termostato</h1></div>
+      <div class="content" style="justify-content:center">
+        <div class="modal">
+          <div class="lock">🔒</div>
+          <h2 style="text-align:center">Inserisci la API-key</h2>
+          <p class="sub" style="text-align:center">Per accedere al termostato inserisci la chiave autorizzata. Verrà salvata su questo dispositivo.</p>
+          <input class="input" style="width:100%;text-align:left;margin-bottom:12px" type="password" placeholder="X-API-Key" value="••••••••••">
+          <button class="btn">Accedi</button>
+          <div class="hint" style="text-align:center">La chiave viene verificata con il backend prima di procedere.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">6 — Gate inserimento API-key</div>
+  </div>
+
+  <!-- 7. LOG DETTAGLIO (tabella un rigo/minuto) -->
+  <div class="wrap">
+  <div class="phone" id="s-logdet">
+    <div class="notch"></div>
+    <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
+    <div class="screen">
+      <div class="appbar"><h1>Dettaglio log</h1><span class="health"><span class="badge">◂ grafico</span></span></div>
+      <div class="content" style="padding:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 8px">
+          <span class="sub">04/09 · 1440 record (1/min)</span>
+          <span class="badge">più recenti ▾</span>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="color:var(--muted);text-align:left;background:var(--card2)">
+                <th style="padding:9px 14px;font-weight:600">Ora</th>
+                <th style="padding:9px 6px;font-weight:600">Cald.</th>
+                <th style="padding:9px 6px;font-weight:600;text-align:right">Ril.</th>
+                <th style="padding:9px 14px;font-weight:600;text-align:right">Target</th>
+              </tr>
+            </thead>
+            <tbody id="logrows" style="color:var(--txt)"></tbody>
+          </table>
+        </div>
+        <div class="hint" style="text-align:center">Lista virtualizzata (react-window) · un record al minuto · scorri per i precedenti</div>
+      </div>
+      <div class="tabbar">
+        <div class="tab"><span class="ic">⚙️</span>Config</div>
+        <div class="tab"><span class="ic">📅</span>Calendario</div>
+        <div class="tab active"><span class="ic">📈</span>Log</div>
+        <div class="tab"><span class="ic">⚠️</span>Errori</div>
+        <div class="tab"><span class="ic">🔑</span>Impostaz.</div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">7 — Log · tabella dettaglio (un rigo/minuto)</div>
+  </div>
+
+</div>
+<script>
+// Genera righe minuto-per-minuto (decrescente da 10:29)
+(function(){
+  const tb = document.getElementById('logrows');
+  if(!tb) return;
+  let h=10, m=29;
+  // pattern temperatura oscillante attorno al target 20.5
+  const temps = [20.4,20.6,20.5,20.3,20.1,19.9,19.8,19.7,19.6,19.5,19.6,19.7,19.9,20.0,20.2,20.4,20.5,20.6,20.4,20.2,20.0,19.8,19.7,19.6,19.5,19.4,19.5,19.7,19.9,20.1];
+  for(let i=0;i<30;i++){
+    const on = temps[i] < 20.5;
+    const dot = on ? '🟢' : '🔴';
+    const mm = String(m).padStart(2,'0');
+    const zebra = i%2 ? 'background:rgba(255,255,255,.02)' : '';
+    tb.insertAdjacentHTML('beforeend',
+      `<tr style="${zebra}">`+
+      `<td style="padding:6px 14px;font-variant-numeric:tabular-nums">${h}:${mm}</td>`+
+      `<td style="padding:6px 6px">${dot}</td>`+
+      `<td style="padding:6px 6px;text-align:right">${temps[i].toFixed(1)}°</td>`+
+      `<td style="padding:6px 14px;text-align:right">20.5°</td>`+
+      `</tr>`);
+    m--; if(m<0){m=59;h--;}
+  }
+})();
+</script>
+</body>
+</html>

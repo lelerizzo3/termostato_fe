@@ -47,6 +47,7 @@ Criterio guida: **semplicità**, poche dipendenze, output statico servibile da A
 | Form | **React Hook Form** + **Zod** | Validazione dichiarativa allineata ai vincoli OpenAPI (min/max, multipleOf 0.1, campi obbligatori) |
 | Styling | **Tailwind CSS** | Scelta confermata. Per chi viene dal back-end è il percorso più semplice: utility direttamente nel markup, nessun file CSS da mantenere, mobile-first immediato con i prefissi responsive |
 | Grafici | **Recharts** | Visualizzazione grafica dei log (andamento temperatura/target). API dichiarativa React, semplice per grafici a linee; buona resa su mobile |
+| Liste lunghe | **react-window** | Virtualizzazione della tabella log di polling (~1440 righe/giorno): renderizza solo le righe visibili, mantiene la UI fluida |
 | PWA | **vite-plugin-pwa** | Genera manifest e service worker (Workbox) con configurazione minima; abilita "Aggiungi a Home" su iPhone |
 | Client HTTP | **fetch** nativo (wrapper sottile) | Nessuna libreria HTTP aggiuntiva necessaria |
 | Tipi API | Generati da OpenAPI con **openapi-typescript** | Tipi sempre allineati al contratto; una sola fonte di verità |
@@ -242,38 +243,68 @@ Errori, Impostazioni. Un badge/indicatore di stato backend (health) nell'header.
 - Carica con `GET /config/calendario`, salva con `PUT /config/calendario`.
 - Struttura: 7 giorni canonici (`lunedi`…`domenica`), ciascuno con lista di
   intervalli (`ora_inizio`, `ora_fine`, `temperatura_target`).
-- Editor per giorno: aggiungi/rimuovi intervallo, campi orario (`HH:mm`),
-  temperatura (step 0.1).
+
+**Volume atteso.** Ogni giorno ha **almeno 4 intervalli** (e potenzialmente di
+più). Mostrare tutti i 7 giorni con tutti gli slot inline satura lo schermo del
+telefono: la schermata usa un layout **ad accordion**.
+
+- **Layout ad accordion (un giorno alla volta)**: i 7 giorni sono righe
+  espandibili. La riga collassata mostra nome del giorno e un riepilogo (numero
+  di intervalli, es. "4 intervalli"). Toccando il giorno si espande la lista
+  completa dei suoi intervalli con l'editor.
+- Il giorno **corrente** è espanso di default; gli altri sono collassati.
+- **Editor per giorno** (giorno espanso): elenco degli intervalli, ciascuno con
+  campi `ora_inizio`/`ora_fine` (`HH:mm`) e `temperatura_target` (step 0.1),
+  azione **rimuovi** per intervallo e **"+ Aggiungi intervallo"** in fondo al
+  giorno. Gli intervalli sono ordinati per ora di inizio.
 - Validazioni lato client (per evitare `400` evitabili):
   - `ora_inizio` < `ora_fine`.
-  - Intervalli dello stesso giorno **non sovrapposti**.
+  - Intervalli dello stesso giorno **non sovrapposti** (evidenziare in rosso
+    l'intervallo in conflitto).
   - Orari nel formato `HH:mm` (rientra nel pattern accettato dal backend).
   - `temperatura_target` con una cifra decimale.
 - **Fuso orario**: l'utente edita e vede gli orari in **ora locale** (Italia
   UTC+1/UTC+2 con DST automatico); il front-end converte in UTC prima del `PUT`
   e da UTC a locale in `GET` (vedi cap. 7). Il payload sul filo resta in UTC.
-- Il `PUT` deve contenere **esattamente i 7 giorni**; i giorni senza intervalli
+- **Salvataggio**: un unico pulsante "Salva" persiste l'intero calendario. Il
+  `PUT` deve contenere **esattamente i 7 giorni**; i giorni senza intervalli
   vanno inviati come array vuoti.
+- Suggerimento UX: azione rapida **"Copia su altri giorni"** per replicare gli
+  intervalli di un giorno su altri (comodo con 4+ slot ripetuti nella settimana).
 
 ### 6.3 Schermata Log di polling (`/log`)
 
 - `GET /log?da=&a=` con parametri opzionali (`format: date`, UTC).
 - Default senza parametri → giorno corrente UTC (gestito dal backend).
 - Filtro con due date-picker (`da`, `a`); validazione client `da <= a`.
-- Elenco ordinato per timestamp crescente. Ogni record mostra: data/ora,
-  caldaia (on/off), temperatura rilevata, temperatura target (può essere null),
-  override attivo, temperatura override.
-- Visualizzazione mobile a **card** (non tabella densa) per leggibilità su iPhone.
-- **Visualizzazione grafica (richiesta)**: in cima alla schermata un **grafico
-  a linee** (Recharts) mostra l'andamento nel tempo di:
+
+**Volume dati.** Il backend scrive un record **ad ogni ciclo di polling** (con
+polling a 60 s → ~1440 record al giorno). Un elenco a card per singolo record è
+inadatto: la vista primaria è il **grafico**; il dettaglio riga è opzionale e in
+forma di **tabella compatta**.
+
+- **Visualizzazione grafica (vista primaria, richiesta)**: un **grafico a linee**
+  (Recharts) mostra l'andamento nel tempo di:
   - `temperatura_rilevata` (linea continua),
-  - `temperatura_target` (linea tratteggiata; assente quando `null`),
+  - `temperatura_target` (linea tratteggiata; assente/gap quando `null`),
   - lo stato caldaia (`caldaia_accesa`) come banda/area di sfondo o marcatori
     ON/OFF, per correlare accensioni e temperatura.
-  Sotto il grafico resta l'elenco a card dei singoli record. Il grafico usa lo
-  stesso range di date del filtro (`da`/`a`) e l'asse tempo è in **ora locale**
-  (vedi cap. 7). Su dataset ampi, campionare/aggregare i punti per mantenere la
-  resa fluida su mobile.
+  Il grafico usa lo stesso range di date del filtro (`da`/`a`) e l'asse tempo è
+  in **ora locale** (vedi cap. 7). Su dataset ampi (giorni multipli) i punti
+  vengono campionati/aggregati per mantenere la resa fluida su mobile.
+- **Dettaglio (tabella compatta, nascosta di default)**: la vista mostra di
+  **default solo il grafico**. Il dettaglio riga-per-riga è disponibile tramite
+  un pulsante **"Mostra dettaglio"** che espande una **tabella densa** (non card)
+  con header e scroll verticale. Colonne: ora (locale, `HH:mm`), stato caldaia
+  (icona/colore), rilevata, target.
+- Accorgimenti per il volume (quando la tabella è espansa):
+  - Ordinamento di default per timestamp **decrescente** (voci più recenti in
+    cima), configurabile.
+  - **Virtualizzazione** della lista (react-window) per non renderizzare 1440
+    righe in DOM contemporaneamente.
+  - Campi `override_attivo` e `temperatura_override`, poco utili riga-per-riga ad
+    alta frequenza, sono consultabili aprendo la singola riga (dettaglio) e non
+    occupano colonne fisse.
 
 ### 6.4 Schermata Log di errore (`/log/errori`)
 
