@@ -13,6 +13,7 @@ const shots = [
   ['s-set',    'schermata-5-impostazioni.png'],
   ['s-gate',   'schermata-6-gate-apikey.png'],
   ['s-logdet', 'schermata-7-log-dettaglio.png'],
+  ['s-status', 'schermata-8-stato.png'],
 ];
 
 (async () => {

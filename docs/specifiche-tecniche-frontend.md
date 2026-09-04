@@ -9,11 +9,13 @@
 
 Realizzare una **web-app mobile-first** che permetta di:
 
-1. Visualizzare e modificare la configurazione di sistema (`GET`/`PUT /config`).
-2. Visualizzare e modificare il calendario settimanale (`GET`/`PUT /config/calendario`).
-3. Consultare i log di polling (`GET /log`) con filtro per range di date.
-4. Consultare i log di errore (`GET /log/errori`) con filtro per range di date.
-5. (Opzionale) Mostrare lo stato di salute del backend (`GET /actuator/health`).
+1. Visualizzare lo stato corrente del termostato (`GET /stato`): temperatura
+   ambiente, temperatura target attiva e stato reale del relay.
+2. Visualizzare e modificare la configurazione di sistema (`GET`/`PUT /config`).
+3. Visualizzare e modificare il calendario settimanale (`GET`/`PUT /config/calendario`).
+4. Consultare i log di polling (`GET /log`) con filtro per range di date.
+5. Consultare i log di errore (`GET /log/errori`) con filtro per range di date.
+6. (Opzionale) Mostrare lo stato di salute del backend (`GET /actuator/health`).
 
 L'ambito è **esclusivamente il frontend**. Il backend non viene modificato. Il
 consumo del contratto REST inbound è quello descritto in `openapi.yaml`; gli
@@ -28,6 +30,7 @@ per lo scenario E2E lato backend).
 | Deploy su Linux con Apache2 + HTTPS funzionante | Richiesta utente | Il frontend è un **bundle statico** servito da Apache; nessun runtime Node in produzione |
 | Preferenza per la semplicità | Richiesta utente | Stack minimale, poche dipendenze, nessun backend-for-frontend dedicato |
 | Autenticazione via `X-API-Key` | `openapi.yaml`, sez. 3.8 / 7.0 | Vedi capitolo 5 (Sicurezza): il segreto non può risiedere nel bundle |
+| Stato corrente | `openapi.yaml`, `GET /stato` | Dashboard read-only; ogni richiesta legge sensore e relay, `temperatura_target` può essere `null`; nessun comando di attuazione dal frontend |
 | JSON in `snake_case` | `openapi.yaml` (info) | Tipi TypeScript con proprietà in snake_case; nessuna conversione automatica |
 | Date/orari in UTC | Spec funzionali RF-24/25, `openapi.yaml` | Gestione esplicita UTC ↔ visualizzazione locale (vedi cap. 7) |
 
@@ -102,6 +105,7 @@ src/
   api/
     generated.ts           # tipi generati da openapi.yaml (openapi-typescript)
     client.ts              # wrapper fetch: base URL, header X-API-Key, gestione errori/401
+    state.ts               # funzione getCurrentState per GET /stato
     config.ts              # funzioni getConfig / updateConfig
     calendar.ts            # funzioni getCalendar / updateCalendar
     logs.ts                # funzioni getPollingLogs / getErrorLogs
@@ -110,15 +114,17 @@ src/
     ApiKeyGate.tsx         # gate: mostra inserimento chiave se assente/non valida
     useApiKey.ts           # hook per accedere/aggiornare la chiave
   hooks/
+    useCurrentState.ts     # React Query hook per GET /stato e refresh
     useConfig.ts           # React Query hooks
     useCalendar.ts
     useLogs.ts
   pages/
+    StatusPage.tsx         # dashboard stato corrente, route /stato
     ConfigPage.tsx
     CalendarPage.tsx
     LogsPage.tsx
     ErrorLogsPage.tsx
-    SettingsPage.tsx       # gestione API-key (inserimento/sostituzione/reset)
+    SettingsPage.tsx       # API-key + link alla configurazione sistema
   components/
     forms/                 # campi form riutilizzabili (temperatura, orario, ecc.)
     layout/                # header, bottom nav mobile, safe-area wrapper
@@ -134,10 +140,13 @@ src/
 - `api/client.ts` centralizza: base URL, header `X-API-Key` (vedi cap. 5),
   serializzazione JSON, parsing risposte, mappatura degli errori (`ApiError`,
   `UnauthorizedError`) in un formato uniforme per la UI.
+- `api/state.ts` espone `getCurrentState()`, che chiama `GET /stato` e restituisce
+  il tipo generato dalla risposta `200` dell'operazione `getCurrentState`.
 - I tipi TypeScript sono **generati** da `openapi.yaml` così da restare allineati
   al contratto (comando in `package.json`, es. `openapi-typescript openapi.yaml -o src/api/generated.ts`).
 - Ogni endpoint ha una funzione dedicata + un hook React Query per cache,
-  stato di caricamento e invalidazione dopo le `PUT`.
+  stato di caricamento e invalidazione dopo le `PUT`; `useCurrentState` gestisce
+  anche refresh manuale e polling non aggressivo dello stato corrente.
 
 ## 5. Sicurezza e gestione della API-key
 
@@ -213,12 +222,44 @@ La configurazione Apache completa è nel cap. 10.2.
 
 All'avvio l'app applica un **gate sulla API-key** (`ApiKeyGate`): se non è
 presente una chiave in `localStorage`, mostra la schermata di inserimento chiave
-(vedi 6.6) prima di ogni altra funzionalità.
+(vedi 6.7) prima di ogni altra funzionalità.
 
-Navigazione mobile con **bottom navigation** a 5 voci: Config, Calendario, Log,
-Errori, Impostazioni. Un badge/indicatore di stato backend (health) nell'header.
+Navigazione mobile con **bottom navigation** a 5 voci: **Stato**, Calendario,
+Log, Errori, Impostazioni. La configurazione completa resta disponibile nella
+route `/config`, raggiungibile dal pulsante "Configurazione sistema" della
+schermata Impostazioni (così la barra non viene sovraccaricata con una sesta
+voce). La schermata Stato è la destinazione iniziale dopo il gate.
 
-### 6.1 Schermata Configurazione (`/config`)
+### 6.1 Schermata Stato corrente (`/stato`)
+
+- È la **dashboard iniziale** e la voce principale della bottom navigation.
+- Carica lo stato con `GET /stato` tramite `useCurrentState`.
+- Il backend esegue a ogni richiesta la lettura del sensore, la risoluzione del
+  target e la lettura del relay: il frontend tratta la risposta come una lettura
+  **read-only**, senza tentare di comandare direttamente la caldaia.
+- Visualizza in modo immediato:
+  - `temperatura`: temperatura ambiente, con una cifra decimale e unità `°C`;
+  - `temperatura_target`: target attivo, con una cifra decimale; se è `null`
+    mostrare **"Nessun target attivo"**;
+  - `relay_acceso`: stato reale del relay, con indicatore evidente **ON/OFF**
+    (o **ACCESO/SPENTO**).
+- Se `temperatura_target` è `null`, il frontend non deve dedurre lo stato del
+  relay dal target: mostra sempre il valore effettivamente restituito da
+  `relay_acceso`.
+- Aggiornamento dati:
+  - caricamento all'ingresso nella pagina e pulsante **"Aggiorna"** manuale;
+  - refetch automatico ogni **60 secondi**, sospeso quando la pagina non è
+    visibile, perché ogni chiamata legge sensore e relay esterni;
+  - indicare l'istante dell'ultima richiesta usando l'ora locale del dispositivo.
+    L'istante è una marca locale del frontend: il contratto `/stato` non
+    restituisce un timestamp del backend.
+- Stati UI obbligatori: skeleton/loading iniziale, errore `500` con messaggio
+  comprensibile e azione "Riprova", gestione `401` tramite il gate API-key,
+  e stato dati sempre aggiornato durante il refetch.
+- La schermata non espone comandi di accensione/spegnimento: il backend espone
+  per questo caso solo una lettura dello stato corrente.
+
+### 6.2 Schermata Configurazione (`/config`)
 
 - Carica con `GET /config`, salva con `PUT /config`.
 - Form con validazione allineata a `SystemConfiguration`:
@@ -238,7 +279,7 @@ Errori, Impostazioni. Un badge/indicatore di stato backend (health) nell'header.
   i campi letti, non solo quelli modificati (merge sullo stato caricato).
 - Gestione `400` → mostrare `message` dell'`ApiError`.
 
-### 6.2 Schermata Calendario (`/config/calendario`)
+### 6.3 Schermata Calendario (`/config/calendario`)
 
 - Carica con `GET /config/calendario`, salva con `PUT /config/calendario`.
 - Struttura: 7 giorni canonici (`lunedi`…`domenica`), ciascuno con lista di
@@ -272,7 +313,7 @@ telefono: la schermata usa un layout **ad accordion**.
 - Suggerimento UX: azione rapida **"Copia su altri giorni"** per replicare gli
   intervalli di un giorno su altri (comodo con 4+ slot ripetuti nella settimana).
 
-### 6.3 Schermata Log di polling (`/log`)
+### 6.4 Schermata Log di polling (`/log`)
 
 - `GET /log?da=&a=` con parametri opzionali (`format: date`, UTC).
 - Default senza parametri → giorno corrente UTC (gestito dal backend).
@@ -306,40 +347,45 @@ forma di **tabella compatta**.
     alta frequenza, sono consultabili aprendo la singola riga (dettaglio) e non
     occupano colonne fisse.
 
-### 6.4 Schermata Log di errore (`/log/errori`)
+### 6.5 Schermata Log di errore (`/log/errori`)
 
 - `GET /log/errori?da=&a=`, stessa semantica di `/log`.
 - Ogni record: data/ora, `tipo_errore`, caldaia (nullable), temperatura rilevata
   (nullable), `num_errori_consecutivi`.
 - Evidenziare visivamente la severità (colore) e il conteggio consecutivo.
 
-### 6.5 Stato backend (opzionale)
+### 6.6 Stato backend (opzionale)
 
 - `GET /actuator/health` per un indicatore UP/DOWN nell'header.
 
-### 6.6 Schermata Impostazioni / API-key (`/settings`)
+### 6.7 Schermata Impostazioni / API-key (`/settings`)
 
+- È la quinta voce della bottom navigation e contiene la gestione della chiave
+  API oltre ai collegamenti alle impostazioni applicative.
 - Mostra lo stato corrente della chiave (impostata / non impostata), senza mai
   rivelarla in chiaro (es. solo ultimi caratteri mascherati).
 - **Inserimento/sostituzione chiave**: campo `type="password"`,
   `autocomplete="off"`; al salvataggio la chiave va in `localStorage`.
 - **Rimozione chiave**: pulsante che cancella la chiave dallo storage e riporta
   al gate di inserimento.
+- Espone un'azione/link **"Configurazione sistema"** verso `/config`, che apre
+  il form completo di `GET`/`PUT /config` descritto nella sezione 6.2.
 - Questa schermata è anche la destinazione del **redirect automatico su `401`**
   (chiave mancante/non valida), con messaggio esplicativo.
 - All'inserimento è consigliata una **verifica** immediata della chiave con una
-  chiamata leggera (es. `GET /actuator/health` o `GET /config`): se risponde
+  chiamata leggera (es. `GET /actuator/health` o `GET /stato`): se risponde
   `401`, la chiave è rifiutata e non viene salvata come valida.
 
 ## 7. Gestione di data e ora (UTC ↔ ora locale)
 
 - Il back-end tratta, memorizza e restituisce **tutti** gli orari e i timestamp
-  esclusivamente in **UTC** (spec. funzionali RF-40). Il front-end è
-  responsabile della conversione nell'**ora locale** del dispositivo in
-  visualizzazione e della riconversione in UTC prima dell'invio (RF-41).
+  esclusivamente in **UTC** (specifiche funzionali RF-24/RF-25 e `openapi.yaml`).
+  Il front-end è responsabile della conversione nell'**ora locale** del
+  dispositivo in visualizzazione e della riconversione in UTC prima dell'invio.
 - Per un utente in Italia l'offset è **UTC+1** in ora solare e **UTC+2** in ora
   legale (CEST). La conversione deve seguire automaticamente il cambio DST.
-- Il formato orario mostrato ed editato è **`HH:mm`** (RF-42).
+- Il formato orario mostrato ed editato è **`HH:mm`**, come regola di interfaccia
+  frontend; il backend accetta anche `HH:mm:ss` secondo il contratto OpenAPI.
 - **Regole di progettazione:**
   - Tutte le richieste inviano date/orari in UTC; tutte le risposte sono
     interpretate come UTC.
@@ -376,18 +422,20 @@ forma di **tabella compatta**.
 | FE-NF-10 | **PWA richiesta**: manifest + icone + service worker per "Aggiungi a Home" su iPhone e avvio in modalità standalone |
 | FE-NF-11 | La chiave non deve mai comparire nei log applicativi né essere mostrata in chiaro in UI |
 | FE-NF-12 | **Visualizzazione grafica richiesta** dei log di polling (andamento temperatura rilevata/target e stato caldaia) |
+| FE-NF-13 | La dashboard Stato deve mostrare la lettura corrente di `GET /stato`, gestire `temperatura_target = null`, distinguere loading/error/ultimo aggiornamento e non esporre comandi di relay |
 
 ## 9. Mappatura endpoint → funzionalità
 
 | Endpoint (OpenAPI) | Metodo | Uso nel frontend |
 |---|---|---|
-| `/config` | GET | Caricamento form configurazione |
+| `/stato` | GET | Dashboard iniziale: temperatura ambiente, target attivo nullable e stato relay; refetch manuale/ogni 60 s |
+| `/config` | GET | Caricamento form configurazione, raggiungibile da Impostazioni |
 | `/config` | PUT | Salvataggio configurazione (oggetto completo) |
 | `/config/calendario` | GET | Caricamento editor calendario |
 | `/config/calendario` | PUT | Salvataggio calendario (7 giorni completi) |
-| `/log` | GET | Lista log polling con filtro `da`/`a` |
+| `/log` | GET | Lista log polling con filtro `da`/`a` e grafico |
 | `/log/errori` | GET | Lista log errori con filtro `da`/`a` |
-| `/actuator/health` | GET | Indicatore stato backend (opzionale) |
+| `/actuator/health` | GET | Indicatore stato backend nell'header (opzionale) |
 | `mock/*`, `/temperature`, `/relay` | — | **Non usati** dal frontend |
 
 ## 10. Build e deploy su Apache
@@ -494,13 +542,16 @@ Alias /termostato /var/www/termostato-fe
 ## 11. Testing
 
 - **Unit/Component** (Vitest + Testing Library): validazioni form (override
-  obbligatorio, sovrapposizione intervalli, `da <= a`), rendering card log,
-  gate API-key (chiave assente → inserimento; `401` → invalidazione + redirect).
+  obbligatorio, sovrapposizione intervalli, `da <= a`), rendering del grafico e
+  della tabella log, dashboard Stato con risposta completa e con
+  `temperatura_target = null`, gestione loading/500/refresh, gate API-key
+  (chiave assente → inserimento; `401` → invalidazione + redirect).
 - **Contract**: test che i tipi generati corrispondano al contratto (rigenerazione
-  in CI e diff).
-- **E2E** (Playwright, opzionale): flusso "leggi config → modifica soglia →
-  salva → ricarica" contro un backend con profilo `mock`.
-- Test manuale su **Safari iOS** reale per layout, safe-area e date.
+  in CI e diff), inclusa la risposta di `GET /stato`.
+- **E2E** (Playwright, opzionale): flusso "gate → leggi Stato → leggi config →
+  modifica soglia → salva → ricarica" contro un backend con profilo `mock`.
+- Test manuale su **Safari iOS** reale per layout, safe-area, date e refresh
+  periodico della schermata Stato.
 
 ## 12. Decisioni consolidate (ex punti aperti)
 
@@ -518,16 +569,20 @@ Alias /termostato /var/www/termostato-fe
 4. **PWA**: DECISA → installabile "Aggiungi a Home" su iPhone via
    `vite-plugin-pwa` (cap. 3.1 e FE-NF-10).
 5. **Visualizzazione grafica dei log**: DECISA → grafico a linee (Recharts) su
-   temperatura rilevata/target e stato caldaia (cap. 6.3 e FE-NF-12).
+   temperatura rilevata/target e stato caldaia (cap. 6.4 e FE-NF-12).
+6. **Stato corrente**: DECISO → dashboard iniziale `/stato` alimentata da
+   `GET /stato`, read-only, con refresh manuale e automatico ogni 60 secondi;
+   bottom navigation a 5 voci con Stato al posto di Config. La configurazione
+   completa resta raggiungibile da Impostazioni (cap. 6.1 e FE-NF-13).
 
 ## 13. Note di implementazione PWA
 
 - Configurare `vite-plugin-pwa` con `registerType: 'autoUpdate'` per aggiornare
   il service worker senza intervento manuale.
 - **Scope in sotto-cartella**: impostare `base: '/termostato/'` e
-  `scope: '/termostato/'`; nel manifest `start_url: '/termostato/'`. Lo scope del
-  service worker resta così confinato all'app e non interferisce con la home del
-  dominio.
+  `scope: '/termostato/'`; nel manifest `start_url: '/termostato/stato'`. La PWA
+  apre direttamente la dashboard corrente e lo scope del service worker resta
+  confinato all'app, senza interferire con la home del dominio.
 - **Manifest**: `name`, `short_name`, `display: 'standalone'`, `theme_color`,
   `background_color`, icone (almeno 192px e 512px, più icona maskable).
 - **iOS/Safari**: aggiungere i meta tag `apple-mobile-web-app-capable`,

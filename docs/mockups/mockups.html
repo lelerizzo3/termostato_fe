@@ -113,15 +113,15 @@
         <button class="btn">Salva configurazione</button>
       </div>
       <div class="tabbar">
-        <div class="tab active"><span class="ic">⚙️</span>Config</div>
+        <div class="tab"><span class="ic">🏠</span>Stato</div>
         <div class="tab"><span class="ic">📅</span>Calendario</div>
         <div class="tab"><span class="ic">📈</span>Log</div>
         <div class="tab"><span class="ic">⚠️</span>Errori</div>
-        <div class="tab"><span class="ic">🔑</span>Impostaz.</div>
+        <div class="tab active"><span class="ic">🔑</span>Impostaz.</div>
       </div>
     </div>
   </div>
-  <div class="caption">1 — Configurazione</div>
+  <div class="caption">1 — Configurazione</div></div>
   </div>
 
   <!-- 2. CALENDARIO -->
@@ -180,7 +180,7 @@
         <button class="btn">Salva calendario</button>
       </div>
       <div class="tabbar">
-        <div class="tab"><span class="ic">⚙️</span>Config</div>
+        <div class="tab"><span class="ic">🏠</span>Stato</div>
         <div class="tab active"><span class="ic">📅</span>Calendario</div>
         <div class="tab"><span class="ic">📈</span>Log</div>
         <div class="tab"><span class="ic">⚠️</span>Errori</div>
@@ -233,7 +233,7 @@
         <div class="hint" style="text-align:center">Vista di default: solo grafico. La tabella dei singoli record è disponibile su richiesta.</div>
       </div>
       <div class="tabbar">
-        <div class="tab"><span class="ic">⚙️</span>Config</div>
+        <div class="tab"><span class="ic">🏠</span>Stato</div>
         <div class="tab"><span class="ic">📅</span>Calendario</div>
         <div class="tab active"><span class="ic">📈</span>Log</div>
         <div class="tab"><span class="ic">⚠️</span>Errori</div>
@@ -269,7 +269,7 @@
         </div>
       </div>
       <div class="tabbar">
-        <div class="tab"><span class="ic">⚙️</span>Config</div>
+        <div class="tab"><span class="ic">🏠</span>Stato</div>
         <div class="tab"><span class="ic">📅</span>Calendario</div>
         <div class="tab"><span class="ic">📈</span>Log</div>
         <div class="tab active"><span class="ic">⚠️</span>Errori</div>
@@ -301,13 +301,18 @@
         </div>
         <button class="btn danger">Rimuovi chiave</button>
         <div class="card">
+          <h2>Impostazioni applicative</h2>
+          <div class="row"><span class="label">Configurazione sistema</span><span class="val">›</span></div>
+          <button class="btn sec" style="margin-top:8px">Apri configurazione</button>
+        </div>
+        <div class="card">
           <h2>Backend</h2>
           <div class="row"><span class="label">Stato</span><span class="pill on">UP</span></div>
           <div class="row"><span class="label">Endpoint</span><span class="muted" style="font-size:12px">/termostato/api</span></div>
         </div>
       </div>
       <div class="tabbar">
-        <div class="tab"><span class="ic">⚙️</span>Config</div>
+        <div class="tab"><span class="ic">🏠</span>Stato</div>
         <div class="tab"><span class="ic">📅</span>Calendario</div>
         <div class="tab"><span class="ic">📈</span>Log</div>
         <div class="tab"><span class="ic">⚠️</span>Errori</div>
@@ -368,7 +373,7 @@
         <div class="hint" style="text-align:center">Lista virtualizzata (react-window) · un record al minuto · scorri per i precedenti</div>
       </div>
       <div class="tabbar">
-        <div class="tab"><span class="ic">⚙️</span>Config</div>
+        <div class="tab"><span class="ic">🏠</span>Stato</div>
         <div class="tab"><span class="ic">📅</span>Calendario</div>
         <div class="tab active"><span class="ic">📈</span>Log</div>
         <div class="tab"><span class="ic">⚠️</span>Errori</div>
@@ -377,6 +382,47 @@
     </div>
   </div>
   <div class="caption">7 — Log · tabella dettaglio (un rigo/minuto)</div>
+  </div>
+
+  <!-- 8. STATO CORRENTE -->
+  <div class="wrap">
+  <div class="phone" id="s-status">
+    <div class="notch"></div>
+    <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
+    <div class="screen">
+      <div class="appbar"><h1>Stato</h1><span class="health"><span class="dot up"></span>Backend UP</span></div>
+      <div class="content">
+        <div class="card" style="border-color:var(--accent);text-align:center;padding:20px 16px">
+          <h2>Temperatura ambiente</h2>
+          <div class="big">19.0 <span class="unit">°C</span></div>
+          <div class="sub" style="margin-top:8px">lettura corrente dal sensore</div>
+        </div>
+        <div class="card">
+          <h2>Stato termostato</h2>
+          <div class="row"><span class="label">Target attivo</span><span class="val">20.5 °C</span></div>
+          <div class="row"><span class="label">Relay caldaia</span><span class="pill on">ACCESO</span></div>
+        </div>
+        <div class="card">
+          <h2>Aggiornamento</h2>
+          <div class="row"><span class="label">Ultima lettura</span><span class="val time">09:41:00</span></div>
+          <div class="hint">Orario locale del dispositivo · il backend non restituisce un timestamp.</div>
+          <button class="btn" style="margin-top:12px">↻ Aggiorna</button>
+        </div>
+        <div class="card">
+          <div class="row" style="padding:0"><span class="label">Nessun comando relay disponibile</span><span class="badge">sola lettura</span></div>
+          <div class="hint">Per modificare il comportamento usa configurazione e calendario.</div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tab active"><span class="ic">🏠</span>Stato</div>
+        <div class="tab"><span class="ic">📅</span>Calendario</div>
+        <div class="tab"><span class="ic">📈</span>Log</div>
+        <div class="tab"><span class="ic">⚠️</span>Errori</div>
+        <div class="tab"><span class="ic">🔑</span>Impostaz.</div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">8 — Stato corrente</div>
   </div>
 
 </div>
