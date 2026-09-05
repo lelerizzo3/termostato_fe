@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useCurrentState } from '../hooks/useApi';
-import { formatTemperature, localNowTime } from '../lib/datetime';
+import { formatHumidity, formatTemperature, localNowTime } from '../lib/datetime';
 import { ErrorState, LoadingState } from '../components/common/States';
 
 export function StatusPage() {
@@ -20,12 +20,22 @@ export function StatusPage() {
 
   return (
     <div className="space-y-4">
-      <section className="app-card border-orange-500 bg-slate-800 text-center">
-        <p className="section-title">Temperatura ambiente</p>
-        <p className="text-6xl font-bold tracking-tight text-slate-100">
-          {state.data.temperatura.toFixed(1)} <span className="text-2xl font-medium text-slate-400">°C</span>
-        </p>
-        <p className="mt-2 text-sm text-slate-400">Lettura corrente dal sensore</p>
+      <section className="app-card border-orange-500 bg-slate-800">
+        <div className="grid grid-cols-2 gap-4 text-center">
+          <div>
+            <p className="section-title">Temperatura interna</p>
+            <p className="text-5xl font-bold tracking-tight text-slate-100">
+              {state.data.temperatura.toFixed(1)} <span className="text-xl font-medium text-slate-400">°C</span>
+            </p>
+          </div>
+          <div>
+            <p className="section-title">Umidità interna</p>
+            <p className="text-5xl font-bold tracking-tight text-slate-100">
+              {state.data.umidita.toFixed(1)} <span className="text-xl font-medium text-slate-400">%</span>
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-center text-sm text-slate-400">Lettura corrente dal sensore interno</p>
       </section>
 
       <section className="app-card">
@@ -44,6 +54,21 @@ export function StatusPage() {
           <p className="mt-2 rounded-xl bg-slate-700/60 px-3 py-2 text-sm text-slate-300">
             Nessun target attivo: il calendario non prevede riscaldamento in questo momento.
           </p>
+        )}
+      </section>
+
+      <section className="app-card">
+        <h2 className="section-title">Dati esterni</h2>
+        <div className="flex items-center justify-between border-b border-slate-700 py-3">
+          <span className="field-label">Temperatura esterna</span>
+          <strong className="text-lg text-slate-100">{formatTemperature(state.data.temperatura_esterna)}</strong>
+        </div>
+        <div className="flex items-center justify-between py-3">
+          <span className="field-label">Umidità esterna</span>
+          <strong className="text-lg text-slate-100">{formatHumidity(state.data.umidita_esterna)}</strong>
+        </div>
+        {(state.data.temperatura_esterna === null || state.data.umidita_esterna === null) && (
+          <p className="mt-2 text-xs leading-5 text-slate-400">I dati esterni non disponibili vengono mostrati come “—”.</p>
         )}
       </section>
 

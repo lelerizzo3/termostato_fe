@@ -45,9 +45,10 @@ sovrascriverlo in sviluppo con `VITE_API_BASE_URL`.
 
 ## Schermate
 
-- `/stato`: dashboard read-only con `GET /stato`, temperatura, target, relay e
-  refresh automatico ogni 60 secondi.
-- `/config`: configurazione completa (`GET`/`PUT /config`), raggiungibile da
+- `/stato`: dashboard read-only con `GET /stato`, temperatura e umidità interne,
+  target, relay, temperatura e umidità esterne e refresh automatico ogni 60 secondi.
+- `/config`: configurazione completa (`GET`/`PUT /config`), inclusi il flag
+  `notifiche_errori_abilitate` e i parametri del meteo esterno, raggiungibile da
   Impostazioni.
 - `/calendario`: editor accordion dei sette giorni con conversione ora locale ↔ UTC.
 - `/log`: grafico Recharts e tabella dettaglio virtualizzata.

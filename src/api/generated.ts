@@ -118,7 +118,8 @@ export interface paths {
         };
         /**
          * Legge lo stato corrente del termostato
-         * @description Legge in tempo reale la temperatura dal sensore e lo stato dal relay.
+         * @description Legge in tempo reale temperatura e umidità dal sensore interno,
+         *     lo stato dal relay e temperatura/umidità esterne da Open-Meteo.
          *     `temperatura_target` è il target risolto dalla configurazione al momento
          *     della richiesta: override se attivo, altrimenti intervallo calendario
          *     UTC corrente. È `null` quando non esiste alcun target attivo.
@@ -263,7 +264,7 @@ export interface paths {
         };
         get?: never;
         /**
-         * Imposta la temperatura simulata
+         * Imposta temperatura e umidità simulate
          * @description Disponibile solo con il profilo `mock`; endpoint di controllo dello scenario E2E.
          */
         put: operations["setMockTemperature"];
@@ -375,6 +376,30 @@ export interface components {
              */
             debug_mode: boolean;
             /**
+             * @description Abilita le notifiche degli errori tramite ntfy.
+             * @default true
+             * @example true
+             */
+            notifiche_errori_abilitate: boolean;
+            /**
+             * Format: uri
+             * @description URL base del servizio REST meteo pubblico.
+             * @example https://api.open-meteo.com
+             */
+            meteo_esterno_url: string;
+            /**
+             * Format: double
+             * @description Latitudine del punto usato per il meteo esterno; default Acireale.
+             * @example 37.6167
+             */
+            meteo_esterno_latitudine: number;
+            /**
+             * Format: double
+             * @description Longitudine del punto usato per il meteo esterno; default Acireale.
+             * @example 15.1667
+             */
+            meteo_esterno_longitudine: number;
+            /**
              * Format: uri
              * @description URL base del sensore REST esterno.
              * @example http://sensore.local
@@ -438,6 +463,12 @@ export interface components {
              * @example 19
              */
             temperatura: number;
+            /**
+             * Format: double
+             * @description Umidità relativa in percentuale, normalizzata a una cifra decimale.
+             * @example 50
+             */
+            umidita: number;
         };
         RelayCommand: {
             /**
@@ -460,6 +491,12 @@ export interface components {
              * @example 19
              */
             temperatura: number;
+            /**
+             * Format: double
+             * @description Umidità relativa del dispositivo simulato in percentuale.
+             * @example 50
+             */
+            umidita: number;
             /**
              * @description Stato corrente del relay simulato.
              * @example false
@@ -487,6 +524,12 @@ export interface components {
             temperatura_rilevata: number;
             /**
              * Format: double
+             * @description Umidità interna rilevata dal sensore in percentuale.
+             * @example 50
+             */
+            umidita_rilevata: number;
+            /**
+             * Format: double
              * @description Target risolto; null quando non è attivo alcun intervallo o override.
              * @example 20.5
              */
@@ -498,6 +541,18 @@ export interface components {
              * @example null
              */
             temperatura_override: number | null;
+            /**
+             * Format: double
+             * @description Temperatura esterna da Open-Meteo; null se la lettura è fallita.
+             * @example 24.3
+             */
+            temperatura_esterna: number | null;
+            /**
+             * Format: double
+             * @description Umidità esterna da Open-Meteo; null se la lettura è fallita.
+             * @example 68.6
+             */
+            umidita_esterna: number | null;
         };
         ErrorLogRecord: {
             /**
@@ -684,6 +739,10 @@ export interface operations {
                  *       "ntfy_url": "https://ntfy.sh",
                  *       "ntfy_topic": "sliverd",
                  *       "debug_mode": false,
+                 *       "notifiche_errori_abilitate": true,
+                 *       "meteo_esterno_url": "https://api.open-meteo.com",
+                 *       "meteo_esterno_latitudine": 37.6167,
+                 *       "meteo_esterno_longitudine": 15.1667,
                  *       "sensore_url": "http://sensore.local",
                  *       "relay_url": "http://relay.local",
                  *       "database_path": "./data/termostato.db",
@@ -861,10 +920,16 @@ export interface operations {
                     "application/json": {
                         /**
                          * Format: double
-                         * @description Temperatura rilevata dal sensore in °C.
+                         * @description Temperatura interna rilevata dal sensore in °C.
                          * @example 19
                          */
                         temperatura: number;
+                        /**
+                         * Format: double
+                         * @description Umidità relativa interna in percentuale, a una cifra decimale.
+                         * @example 50
+                         */
+                        umidita: number;
                         /**
                          * Format: double
                          * @description Target configurato e attivo in °C; null senza target.
@@ -876,6 +941,18 @@ export interface operations {
                          * @example false
                          */
                         relay_acceso: boolean;
+                        /**
+                         * Format: double
+                         * @description Temperatura esterna corrente da Open-Meteo in °C.
+                         * @example 24.3
+                         */
+                        temperatura_esterna: number | null;
+                        /**
+                         * Format: double
+                         * @description Umidità relativa esterna da Open-Meteo in percentuale.
+                         * @example 68.6
+                         */
+                        umidita_esterna: number | null;
                     };
                 };
             };
@@ -1083,7 +1160,8 @@ export interface operations {
         requestBody: {
             content: {
                 /** @example {
-                 *       "temperatura": 21
+                 *       "temperatura": 21,
+                 *       "umidita": 50
                  *     } */
                 "application/json": components["schemas"]["TemperatureReading"];
             };

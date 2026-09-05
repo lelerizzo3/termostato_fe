@@ -36,7 +36,7 @@
   .row{display:flex; align-items:center; justify-content:space-between; padding:9px 0; color:var(--txt); font-size:15px;}
   .row + .row{border-top:1px solid var(--line);}
   .label{color:var(--muted); font-size:14px;}
-  .val{font-weight:600;}
+  .val{font-weight:600;color:var(--txt);}
   .toggle{width:44px;height:26px;border-radius:20px;background:var(--off);position:relative;}
   .toggle.on{background:var(--accent);}
   .knob{position:absolute; top:3px; width:20px;height:20px;border-radius:50%;background:#fff; transition:.2s;}
@@ -90,6 +90,17 @@
           <div class="row"><span class="label">Polling</span><span class="input">60 s</span></div>
         </div>
         <div class="card">
+          <h2>Notifiche ntfy</h2>
+          <div class="row"><span class="label">Notifiche errore abilitate</span><span class="toggle on"><span class="knob"></span></span></div>
+          <div class="row"><span class="label">Debug mode</span><span class="toggle"><span class="knob"></span></span></div>
+          <div class="row"><span class="label">Topic</span><span class="val">sliverd</span></div>
+        </div>
+        <div class="card">
+          <h2>Meteo esterno</h2>
+          <div class="row"><span class="label">Servizio</span><span class="val">Open-Meteo</span></div>
+          <div class="row"><span class="label">Coordinate</span><span class="val">37.6167, 15.1667</span></div>
+        </div>
+        <div class="card">
           <h2>Override manuale</h2>
           <div class="row"><span class="label">Override attivo</span><span class="toggle on"><span class="knob"></span></span></div>
           <div class="row"><span class="label">Temp. override</span><span class="input">20.5 °C</span></div>
@@ -99,11 +110,6 @@
           <h2>Sicurezza & log</h2>
           <div class="row"><span class="label">Max errori consec.</span><span class="input">3</span></div>
           <div class="row"><span class="label">Retention log</span><span class="input">30 gg</span></div>
-        </div>
-        <div class="card">
-          <h2>Notifiche ntfy</h2>
-          <div class="row"><span class="label">Debug mode</span><span class="toggle"><span class="knob"></span></span></div>
-          <div class="row"><span class="label">Topic</span><span class="val">sliverd</span></div>
         </div>
         <div class="card">
           <h2>Sistema</h2>
@@ -203,7 +209,7 @@
           <div class="row" style="padding-top:0"><span class="label">Da</span><span class="input">04/09</span><span class="label">A</span><span class="input">04/09</span></div>
         </div>
         <div class="card">
-          <h2>Andamento temperatura</h2>
+          <h2>Andamento ambientale</h2>
           <svg width="100%" height="150" viewBox="0 0 320 150">
             <!-- gridlines -->
             <line x1="0" y1="30" x2="320" y2="30" stroke="#334155" stroke-width="1"/>
@@ -211,22 +217,31 @@
             <line x1="0" y1="110" x2="320" y2="110" stroke="#334155" stroke-width="1"/>
             <!-- ON band -->
             <rect x="0" y="0" width="120" height="150" fill="rgba(249,115,22,.10)"/>
-            <!-- target dashed -->
+            <!-- target e temperatura interna -->
             <polyline points="0,55 320,55" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="6 5"/>
-            <!-- rilevata -->
             <polyline points="0,95 40,88 80,78 120,60 160,52 200,48 240,50 280,54 320,58"
               fill="none" stroke="#f97316" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-            <text x="6" y="20" fill="#94a3b8" font-size="10">°C</text>
+            <!-- temperatura e umidità esterne/interne -->
+            <polyline points="0,112 40,108 80,100 120,94 160,90 200,86 240,89 280,94 320,98"
+              fill="none" stroke="#facc15" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            <polyline points="0,42 40,48 80,45 120,50 160,57 200,54 240,48 280,43 320,46"
+              fill="none" stroke="#c084fc" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            <polyline points="0,20 40,25 80,22 120,28 160,34 200,30 240,24 280,18 320,22"
+              fill="none" stroke="#ec4899" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            <text x="6" y="16" fill="#94a3b8" font-size="10">°C / %</text>
           </svg>
-          <div style="display:flex;gap:16px;margin-top:8px;font-size:11px">
-            <span style="color:#f97316">● rilevata</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:11px">
+            <span style="color:#f97316">● temp. interna</span>
             <span style="color:#38bdf8">- - target</span>
+            <span style="color:#facc15">● temp. esterna</span>
+            <span style="color:#c084fc">● umidità interna</span>
+            <span style="color:#ec4899">● umidità esterna</span>
             <span style="color:#94a3b8">▨ caldaia ON</span>
           </div>
         </div>
         <div class="card" style="padding:0;overflow:hidden">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
-            <div><div class="val">Dettaglio record</div><div class="sub">1440 voci nel range</div></div>
+            <div><strong style="color:#e2e8f0">Dettaglio record</strong><div class="sub">1440 voci nel range</div></div>
             <button class="btn sec" style="width:auto;padding:9px 14px">Mostra dettaglio ▾</button>
           </div>
         </div>
@@ -361,10 +376,13 @@
           <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead>
               <tr style="color:var(--muted);text-align:left;background:var(--card2)">
-                <th style="padding:9px 14px;font-weight:600">Ora</th>
-                <th style="padding:9px 6px;font-weight:600">Cald.</th>
-                <th style="padding:9px 6px;font-weight:600;text-align:right">Ril.</th>
-                <th style="padding:9px 14px;font-weight:600;text-align:right">Target</th>
+                <th style="padding:9px 10px;font-weight:600">Ora</th>
+                <th style="padding:9px 5px;font-weight:600">Cald.</th>
+                <th style="padding:9px 5px;font-weight:600;text-align:right">T int.</th>
+                <th style="padding:9px 5px;font-weight:600;text-align:right">U int.</th>
+                <th style="padding:9px 5px;font-weight:600;text-align:right">T est.</th>
+                <th style="padding:9px 5px;font-weight:600;text-align:right">U est.</th>
+                <th style="padding:9px 10px;font-weight:600;text-align:right">Target</th>
               </tr>
             </thead>
             <tbody id="logrows" style="color:var(--txt)"></tbody>
@@ -392,10 +410,25 @@
     <div class="screen">
       <div class="appbar"><h1>Stato</h1><span class="health"><span class="dot up"></span>Backend UP</span></div>
       <div class="content">
-        <div class="card" style="border-color:var(--accent);text-align:center;padding:20px 16px">
-          <h2>Temperatura ambiente</h2>
-          <div class="big">19.0 <span class="unit">°C</span></div>
-          <div class="sub" style="margin-top:8px">lettura corrente dal sensore</div>
+        <div class="card" style="border-color:var(--accent);text-align:center;padding:16px">
+          <h2>Misure interne</h2>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <div class="big">19.0 <span class="unit">°C</span></div>
+              <div class="sub" style="margin-top:8px">temperatura</div>
+            </div>
+            <div>
+              <div class="big">52.0 <span class="unit">%</span></div>
+              <div class="sub" style="margin-top:8px">umidità</div>
+            </div>
+          </div>
+          <div class="sub" style="margin-top:12px">lettura corrente dal sensore interno</div>
+        </div>
+        <div class="card">
+          <h2>Dati esterni</h2>
+          <div class="row"><span class="label">Temperatura esterna</span><span class="val">24.3 °C</span></div>
+          <div class="row"><span class="label">Umidità esterna</span><span class="val">68.6 %</span></div>
+          <div class="hint">Fonte meteo configurata · dati aggiornati dal backend</div>
         </div>
         <div class="card">
           <h2>Stato termostato</h2>
@@ -432,8 +465,11 @@
   const tb = document.getElementById('logrows');
   if(!tb) return;
   let h=10, m=29;
-  // pattern temperatura oscillante attorno al target 20.5
+  // pattern ambientale dimostrativo attorno al target 20.5 °C
   const temps = [20.4,20.6,20.5,20.3,20.1,19.9,19.8,19.7,19.6,19.5,19.6,19.7,19.9,20.0,20.2,20.4,20.5,20.6,20.4,20.2,20.0,19.8,19.7,19.6,19.5,19.4,19.5,19.7,19.9,20.1];
+  const humidity = [51,51,52,53,54,55,55,56,57,57,56,55,54,53,52,51,50,50,51,52,53,54,55,56,57,57,56,55,54,53];
+  const externalTemps = [24.3,24.2,24.1,24.0,23.9,23.8,23.7,23.6,23.5,23.4,23.3,23.2,23.1,23.0,22.9,22.8,22.8,22.7,22.7,22.6,22.6,22.5,22.5,22.4,22.4,22.3,22.3,22.2,22.2,22.1];
+  const externalHumidity = [68,68,69,69,70,70,71,71,72,72,73,73,74,74,75,75,75,76,76,77,77,78,78,78,79,79,80,80,81,81];
   for(let i=0;i<30;i++){
     const on = temps[i] < 20.5;
     const dot = on ? '🟢' : '🔴';
@@ -441,10 +477,13 @@
     const zebra = i%2 ? 'background:rgba(255,255,255,.02)' : '';
     tb.insertAdjacentHTML('beforeend',
       `<tr style="${zebra}">`+
-      `<td style="padding:6px 14px;font-variant-numeric:tabular-nums">${h}:${mm}</td>`+
-      `<td style="padding:6px 6px">${dot}</td>`+
-      `<td style="padding:6px 6px;text-align:right">${temps[i].toFixed(1)}°</td>`+
-      `<td style="padding:6px 14px;text-align:right">20.5°</td>`+
+      `<td style="padding:6px 10px;font-variant-numeric:tabular-nums">${h}:${mm}</td>`+
+      `<td style="padding:6px 5px">${dot}</td>`+
+      `<td style="padding:6px 5px;text-align:right">${temps[i].toFixed(1)}°</td>`+
+      `<td style="padding:6px 5px;text-align:right">${humidity[i]}%</td>`+
+      `<td style="padding:6px 5px;text-align:right">${externalTemps[i].toFixed(1)}°</td>`+
+      `<td style="padding:6px 5px;text-align:right">${externalHumidity[i]}%</td>`+
+      `<td style="padding:6px 10px;text-align:right">20.5°</td>`+
       `</tr>`);
     m--; if(m<0){m=59;h--;}
   }

@@ -30,7 +30,7 @@ per lo scenario E2E lato backend).
 | Deploy su Linux con Apache2 + HTTPS funzionante | Richiesta utente | Il frontend è un **bundle statico** servito da Apache; nessun runtime Node in produzione |
 | Preferenza per la semplicità | Richiesta utente | Stack minimale, poche dipendenze, nessun backend-for-frontend dedicato |
 | Autenticazione via `X-API-Key` | `openapi.yaml`, sez. 3.8 / 7.0 | Vedi capitolo 5 (Sicurezza): il segreto non può risiedere nel bundle |
-| Stato corrente | `openapi.yaml`, `GET /stato` | Dashboard read-only; ogni richiesta legge sensore e relay, `temperatura_target` può essere `null`; nessun comando di attuazione dal frontend |
+| Stato corrente | `openapi.yaml`, `GET /stato` | Dashboard read-only; ogni richiesta legge temperatura/umidità interne, relay e dati esterni nullable; nessun comando di attuazione dal frontend |
 | JSON in `snake_case` | `openapi.yaml` (info) | Tipi TypeScript con proprietà in snake_case; nessuna conversione automatica |
 | Date/orari in UTC | Spec funzionali RF-24/25, `openapi.yaml` | Gestione esplicita UTC ↔ visualizzazione locale (vedi cap. 7) |
 
@@ -234,28 +234,32 @@ voce). La schermata Stato è la destinazione iniziale dopo il gate.
 
 - È la **dashboard iniziale** e la voce principale della bottom navigation.
 - Carica lo stato con `GET /stato` tramite `useCurrentState`.
-- Il backend esegue a ogni richiesta la lettura del sensore, la risoluzione del
-  target e la lettura del relay: il frontend tratta la risposta come una lettura
-  **read-only**, senza tentare di comandare direttamente la caldaia.
+- Il backend esegue a ogni richiesta la lettura di temperatura e umidità interne,
+  la risoluzione del target, la lettura del relay e l'acquisizione best-effort
+  dei dati esterni. Il frontend tratta la risposta come una lettura **read-only**,
+  senza tentare di comandare direttamente la caldaia.
 - Visualizza in modo immediato:
-  - `temperatura`: temperatura ambiente, con una cifra decimale e unità `°C`;
+  - `temperatura`: temperatura interna, con una cifra decimale e unità `°C`;
+  - `umidita`: umidità relativa interna, con una cifra decimale e unità `%`;
   - `temperatura_target`: target attivo, con una cifra decimale; se è `null`
     mostrare **"Nessun target attivo"**;
-  - `relay_acceso`: stato reale del relay, con indicatore evidente **ON/OFF**
-    (o **ACCESO/SPENTO**).
+  - `relay_acceso`: stato reale del relay, con indicatore evidente **ON/OFF**;
+  - `temperatura_esterna`: temperatura esterna in °C, oppure `—` se `null`;
+  - `umidita_esterna`: umidità esterna in %, oppure `—` se `null`.
 - Se `temperatura_target` è `null`, il frontend non deve dedurre lo stato del
   relay dal target: mostra sempre il valore effettivamente restituito da
   `relay_acceso`.
 - Aggiornamento dati:
   - caricamento all'ingresso nella pagina e pulsante **"Aggiorna"** manuale;
   - refetch automatico ogni **60 secondi**, sospeso quando la pagina non è
-    visibile, perché ogni chiamata legge sensore e relay esterni;
+    visibile, perché ogni chiamata legge sensore, relay e servizio meteo;
   - indicare l'istante dell'ultima richiesta usando l'ora locale del dispositivo.
     L'istante è una marca locale del frontend: il contratto `/stato` non
     restituisce un timestamp del backend.
 - Stati UI obbligatori: skeleton/loading iniziale, errore `500` con messaggio
   comprensibile e azione "Riprova", gestione `401` tramite il gate API-key,
-  e stato dati sempre aggiornato durante il refetch.
+  valori esterni `null` visualizzati come non disponibili e dati aggiornati
+  durante il refetch.
 - La schermata non espone comandi di accensione/spegnimento: il backend espone
   per questo caso solo una lettura dello stato corrente.
 
@@ -271,7 +275,12 @@ voce). La schermata Stato è la destinazione iniziale dopo il gate.
   - `retention_log_giorni`: intero ≥ 1.
   - `ntfy_url`, `sensore_url`, `relay_url`: URI non vuoti.
   - `ntfy_topic`: stringa non vuota.
-  - `debug_mode`: toggle.
+  - `debug_mode`: toggle per notifiche informative di accensione/spegnimento.
+  - `notifiche_errori_abilitate`: toggle per abilitare/disabilitare le notifiche
+    di errore inviate tramite ntfy.
+  - `meteo_esterno_url`: URI del servizio meteo.
+  - `meteo_esterno_latitudine` e `meteo_esterno_longitudine`: coordinate del
+    punto usato per le letture esterne.
   - `api_keys`: editor di lista di stringhe (aggiungi/rimuovi), `uniqueItems`.
   - `database_path`: **read-only** in UI (bootstrap-only; va rispedito invariato
     nel `PUT`). Mostrare nota "modificabile solo al riavvio".
@@ -326,18 +335,22 @@ forma di **tabella compatta**.
 
 - **Visualizzazione grafica (vista primaria, richiesta)**: un **grafico a linee**
   (Recharts) mostra l'andamento nel tempo di:
-  - `temperatura_rilevata` (linea continua),
-  - `temperatura_target` (linea tratteggiata; assente/gap quando `null`),
-  - lo stato caldaia (`caldaia_accesa`) come banda/area di sfondo o marcatori
-    ON/OFF, per correlare accensioni e temperatura.
-  Il grafico usa lo stesso range di date del filtro (`da`/`a`) e l'asse tempo è
-  in **ora locale** (vedi cap. 7). Su dataset ampi (giorni multipli) i punti
+  - `temperatura_rilevata` (temperatura interna, linea continua);
+  - `temperatura_target` (linea tratteggiata; assente/gap quando `null`);
+  - `temperatura_esterna` (linea distinta; gap quando `null`);
+  - `umidita_rilevata` (umidità interna);
+  - `umidita_esterna` (umidità esterna; gap quando `null`);
+  - lo stato caldaia (`caldaia_accesa`) come marcatori/banda ON/OFF.
+  Le temperature usano una scala °C e le umidità una scala percentuale 0–100,
+  con legenda distinta. Il grafico usa lo stesso range di date del filtro (`da`/`a`)
+  e l'asse tempo è in **ora locale** (vedi cap. 7). Su dataset ampi i punti
   vengono campionati/aggregati per mantenere la resa fluida su mobile.
 - **Dettaglio (tabella compatta, nascosta di default)**: la vista mostra di
   **default solo il grafico**. Il dettaglio riga-per-riga è disponibile tramite
-  un pulsante **"Mostra dettaglio"** che espande una **tabella densa** (non card)
-  con header e scroll verticale. Colonne: ora (locale, `HH:mm`), stato caldaia
-  (icona/colore), rilevata, target.
+  un pulsante **"Mostra dettaglio"** che espande una **tabella densa** con scroll
+  orizzontale su smartphone. Colonne: ora locale (`HH:mm`), stato caldaia,
+  temperatura interna, umidità interna, temperatura esterna, umidità esterna e
+  target. I valori esterni `null` vengono visualizzati come `—`.
 - Accorgimenti per il volume (quando la tabella è espansa):
   - Ordinamento di default per timestamp **decrescente** (voci più recenti in
     cima), configurabile.
@@ -421,14 +434,14 @@ forma di **tabella compatta**.
 | FE-NF-09 | Accessibilità di base (label sui campi, contrasto, focus visibile) |
 | FE-NF-10 | **PWA richiesta**: manifest + icone + service worker per "Aggiungi a Home" su iPhone e avvio in modalità standalone |
 | FE-NF-11 | La chiave non deve mai comparire nei log applicativi né essere mostrata in chiaro in UI |
-| FE-NF-12 | **Visualizzazione grafica richiesta** dei log di polling (andamento temperatura rilevata/target e stato caldaia) |
-| FE-NF-13 | La dashboard Stato deve mostrare la lettura corrente di `GET /stato`, gestire `temperatura_target = null`, distinguere loading/error/ultimo aggiornamento e non esporre comandi di relay |
+| FE-NF-12 | **Visualizzazione grafica richiesta** dei log di polling: temperatura interna/target, umidità interna, temperatura esterna, umidità esterna e stato caldaia, con scale coerenti |
+| FE-NF-13 | La dashboard Stato deve mostrare `temperatura`, `umidita`, `temperatura_target`, `relay_acceso`, `temperatura_esterna` e `umidita_esterna`, gestire i dati esterni nullable, distinguere loading/error/ultimo aggiornamento e non esporre comandi di relay |
 
 ## 9. Mappatura endpoint → funzionalità
 
 | Endpoint (OpenAPI) | Metodo | Uso nel frontend |
 |---|---|---|
-| `/stato` | GET | Dashboard iniziale: temperatura ambiente, target attivo nullable e stato relay; refetch manuale/ogni 60 s |
+| `/stato` | GET | Dashboard iniziale: temperatura/umidità interne, target nullable, relay e temperatura/umidità esterne nullable; refetch manuale/ogni 60 s |
 | `/config` | GET | Caricamento form configurazione, raggiungibile da Impostazioni |
 | `/config` | PUT | Salvataggio configurazione (oggetto completo) |
 | `/config/calendario` | GET | Caricamento editor calendario |
@@ -569,7 +582,8 @@ Alias /termostato /var/www/termostato-fe
 4. **PWA**: DECISA → installabile "Aggiungi a Home" su iPhone via
    `vite-plugin-pwa` (cap. 3.1 e FE-NF-10).
 5. **Visualizzazione grafica dei log**: DECISA → grafico a linee (Recharts) su
-   temperatura rilevata/target e stato caldaia (cap. 6.4 e FE-NF-12).
+   temperatura interna/target, umidità interna, temperatura esterna, umidità
+   esterna e stato caldaia (cap. 6.4 e FE-NF-12).
 6. **Stato corrente**: DECISO → dashboard iniziale `/stato` alimentata da
    `GET /stato`, read-only, con refresh manuale e automatico ogni 60 secondi;
    bottom navigation a 5 voci con Stato al posto di Config. La configurazione

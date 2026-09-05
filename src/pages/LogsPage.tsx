@@ -67,7 +67,7 @@ export function LogsPage() {
         <>
           <section className="app-card">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="section-title mb-0">Andamento temperatura</h2>
+              <h2 className="section-title mb-0">Andamento ambientale</h2>
               <span className="rounded-md border border-slate-600 px-2 py-1 text-xs text-slate-400">{logs.data.length} record</span>
             </div>
             <div className="h-[280px] w-full">
@@ -83,24 +83,39 @@ export function LogsPage() {
                     tick={{ fontSize: 11 }}
                   />
                   <YAxis yAxisId="temperature" stroke="#94a3b8" tick={{ fontSize: 11 }} domain={['auto', 'auto']} />
+                  <YAxis yAxisId="humidity" orientation="right" stroke="#c084fc" tick={{ fontSize: 11 }} domain={[0, 100]} />
                   <YAxis yAxisId="relay" hide domain={[0, 1]} />
                   <Tooltip
                     labelFormatter={(value) => new Date(Number(value)).toLocaleString('it-IT')}
                     formatter={(value: number, name: string) => {
                       if (name === 'relayIndicator') return [value === 1 ? 'ON' : 'OFF', 'Caldaia'];
-                      return [`${Number(value).toFixed(1)} °C`, name === 'temperatura_rilevata' ? 'Rilevata' : 'Target'];
+                      const isHumidity = name === 'umidita_rilevata' || name === 'umidita_esterna';
+                      const labels: Record<string, string> = {
+                        temperatura_rilevata: 'Temp. interna',
+                        temperatura_target: 'Target',
+                        temperatura_esterna: 'Temp. esterna',
+                        umidita_rilevata: 'Umidità interna',
+                        umidita_esterna: 'Umidità esterna'
+                      };
+                      return [`${Number(value).toFixed(1)} ${isHumidity ? '%' : '°C'}`, labels[name] ?? name];
                     }}
                     contentStyle={{ background: '#1e293b', border: '1px solid #475569', borderRadius: 12 }}
                   />
                   <Line yAxisId="temperature" type="monotone" dataKey="temperatura_rilevata" stroke="#f97316" strokeWidth={2.5} dot={false} connectNulls={false} />
                   <Line yAxisId="temperature" type="stepAfter" dataKey="temperatura_target" stroke="#38bdf8" strokeWidth={2} strokeDasharray="6 5" dot={false} connectNulls={false} />
+                  <Line yAxisId="temperature" type="monotone" dataKey="temperatura_esterna" stroke="#facc15" strokeWidth={2} dot={false} connectNulls={false} />
+                  <Line yAxisId="humidity" type="monotone" dataKey="umidita_rilevata" stroke="#c084fc" strokeWidth={2} dot={false} connectNulls={false} />
+                  <Line yAxisId="humidity" type="monotone" dataKey="umidita_esterna" stroke="#ec4899" strokeWidth={2} dot={false} connectNulls={false} />
                   <Line yAxisId="relay" type="stepAfter" dataKey="relayIndicator" stroke="#22c55e" strokeWidth={2} dot={false} strokeOpacity={0.45} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-400">
-              <span className="text-orange-400">● Rilevata</span>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+              <span className="text-orange-400">● Temp. interna</span>
               <span className="text-sky-400">- - Target</span>
+              <span className="text-yellow-300">● Temp. esterna</span>
+              <span className="text-violet-300">● Umidità interna</span>
+              <span className="text-pink-400">● Umidità esterna</span>
               <span className="text-emerald-400">▰ Caldaia ON</span>
             </div>
           </section>
@@ -124,18 +139,22 @@ export function LogsPage() {
 function LogDetailTable({ records }: { records: PollingLogRecord[] }) {
   return (
     <div className="border-t border-slate-700 px-2 pb-3 pt-2">
-      <div className="grid grid-cols-[1.1fr_.7fr_1fr_1fr] gap-2 rounded-lg bg-slate-700/70 px-2 py-2 text-xs font-semibold text-slate-300">
-        <span>Ora</span><span>Cald.</span><span className="text-right">Rilevata</span><span className="text-right">Target</span>
+      <div className="overflow-x-auto">
+        <div className="min-w-[620px]">
+          <div className="grid grid-cols-[1.1fr_.65fr_.9fr_.9fr_.9fr_.9fr_.9fr] gap-2 rounded-lg bg-slate-700/70 px-2 py-2 text-xs font-semibold text-slate-300">
+            <span>Ora</span><span>Cald.</span><span className="text-right">T int.</span><span className="text-right">U int.</span><span className="text-right">T est.</span><span className="text-right">U est.</span><span className="text-right">Target</span>
+          </div>
+          <FixedSizeList
+            height={Math.min(420, Math.max(84, records.length * 42))}
+            itemCount={records.length}
+            itemSize={42}
+            width="100%"
+            itemData={records}
+          >
+            {DetailRow}
+          </FixedSizeList>
+        </div>
       </div>
-      <FixedSizeList
-        height={Math.min(420, Math.max(84, records.length * 42))}
-        itemCount={records.length}
-        itemSize={42}
-        width="100%"
-        itemData={records}
-      >
-        {DetailRow}
-      </FixedSizeList>
     </div>
   );
 }
@@ -143,10 +162,13 @@ function LogDetailTable({ records }: { records: PollingLogRecord[] }) {
 function DetailRow({ index, style, data }: ListChildComponentProps<PollingLogRecord[]>) {
   const record = data[index];
   return (
-    <div style={style} className={`grid grid-cols-[1.1fr_.7fr_1fr_1fr] items-center gap-2 border-b border-slate-700/70 px-2 text-sm ${index % 2 ? 'bg-slate-800/30' : ''}`}>
+    <div style={style} className={`grid grid-cols-[1.1fr_.65fr_.9fr_.9fr_.9fr_.9fr_.9fr] items-center gap-2 border-b border-slate-700/70 px-2 text-sm ${index % 2 ? 'bg-slate-800/30' : ''}`}>
       <span className="font-mono text-slate-300">{formatLocalTime(record.data_ora)}</span>
       <span className={record.caldaia_accesa ? 'text-emerald-400' : 'text-slate-500'} aria-label={record.caldaia_accesa ? 'Accesa' : 'Spenta'}>{record.caldaia_accesa ? '●' : '○'}</span>
       <span className="text-right text-slate-200">{record.temperatura_rilevata.toFixed(1)}°</span>
+      <span className="text-right text-slate-200">{record.umidita_rilevata.toFixed(1)}%</span>
+      <span className="text-right text-slate-200">{record.temperatura_esterna === null ? '—' : `${record.temperatura_esterna.toFixed(1)}°`}</span>
+      <span className="text-right text-slate-200">{record.umidita_esterna === null ? '—' : `${record.umidita_esterna.toFixed(1)}%`}</span>
       <span className="text-right text-slate-200">{record.temperatura_target === null ? '—' : `${record.temperatura_target.toFixed(1)}°`}</span>
     </div>
   );

@@ -30,6 +30,10 @@ export function formatTemperature(value: number | null | undefined): string {
   return value === null || value === undefined ? '—' : `${value.toFixed(1)} °C`;
 }
 
+export function formatHumidity(value: number | null | undefined): string {
+  return value === null || value === undefined ? '—' : `${value.toFixed(1)} %`;
+}
+
 export function utcToday(): string {
   return new Date().toISOString().slice(0, 10);
 }

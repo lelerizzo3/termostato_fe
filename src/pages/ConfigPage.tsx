@@ -20,6 +20,10 @@ const configurationSchema = z.object({
   ntfy_url: z.string().url('Inserisci un URL valido.'),
   ntfy_topic: z.string().min(1, 'Obbligatorio.'),
   debug_mode: z.boolean(),
+  notifiche_errori_abilitate: z.boolean(),
+  meteo_esterno_url: z.string().url('Inserisci un URL valido.'),
+  meteo_esterno_latitudine: z.coerce.number().min(-90, 'Latitudine non valida.').max(90, 'Latitudine non valida.'),
+  meteo_esterno_longitudine: z.coerce.number().min(-180, 'Longitudine non valida.').max(180, 'Longitudine non valida.'),
   sensore_url: z.string().url('Inserisci un URL valido.'),
   relay_url: z.string().url('Inserisci un URL valido.'),
   database_path: z.string().min(1),
@@ -47,6 +51,10 @@ export function ConfigPage() {
       ntfy_url: '',
       ntfy_topic: '',
       debug_mode: false,
+      notifiche_errori_abilitate: true,
+      meteo_esterno_url: 'https://api.open-meteo.com',
+      meteo_esterno_latitudine: 37.6167,
+      meteo_esterno_longitudine: 15.1667,
       sensore_url: '',
       relay_url: '',
       database_path: '',
@@ -99,7 +107,15 @@ export function ConfigPage() {
         <h2 className="section-title">Notifiche ntfy</h2>
         <TextField label="URL ntfy" registration={form.register('ntfy_url')} error={form.formState.errors.ntfy_url?.message} />
         <TextField label="Topic" registration={form.register('ntfy_topic')} error={form.formState.errors.ntfy_topic?.message} />
-        <ToggleRow label="Debug mode" registration={form.register('debug_mode')} />
+        <ToggleRow label="Notifiche errore ntfy abilitate" registration={form.register('notifiche_errori_abilitate')} />
+        <ToggleRow label="Debug mode (notifiche accensione/spegnimento)" registration={form.register('debug_mode')} />
+      </section>
+
+      <section className="app-card">
+        <h2 className="section-title">Meteo esterno</h2>
+        <TextField label="URL servizio meteo" registration={form.register('meteo_esterno_url')} error={form.formState.errors.meteo_esterno_url?.message} />
+        <NumberField label="Latitudine" step="0.0001" registration={form.register('meteo_esterno_latitudine')} error={form.formState.errors.meteo_esterno_latitudine?.message} />
+        <NumberField label="Longitudine" step="0.0001" registration={form.register('meteo_esterno_longitudine')} error={form.formState.errors.meteo_esterno_longitudine?.message} />
       </section>
 
       <section className="app-card">
