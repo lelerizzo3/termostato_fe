@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DayKey, TimeInterval } from '../api/types';
 import { useCalendar, useUpdateCalendar } from '../hooks/useApi';
-import { DAY_KEYS, DAY_LABELS, emptyCalendar, localCalendarToUtc, sortIntervals, utcCalendarToLocal, validateIntervals } from '../lib/calendar';
+import { DAY_KEYS, DAY_LABELS, emptyCalendar, sortIntervals, validateIntervals } from '../lib/calendar';
 import { ErrorState, InlineNotice, LoadingState } from '../components/common/States';
 
 function currentDay(): DayKey {
@@ -18,9 +18,8 @@ export function CalendarPage() {
 
   useEffect(() => {
     if (query.data) {
-      const converted = utcCalendarToLocal(query.data);
-      setCalendar(converted.calendar);
-      setError(converted.warnings[0] ?? null);
+      setCalendar(query.data);
+      setError(null);
     }
   }, [query.data]);
 
@@ -69,13 +68,8 @@ export function CalendarPage() {
       setError(validationError);
       return;
     }
-    const converted = localCalendarToUtc(calendar);
-    if (converted.warnings.length > 0) {
-      setError(converted.warnings[0]);
-      return;
-    }
     try {
-      await update.mutateAsync(converted.calendar);
+      await update.mutateAsync(calendar);
       setMessage('Calendario salvato.');
       setError(null);
     } catch {
@@ -85,7 +79,7 @@ export function CalendarPage() {
 
   return (
     <div className="space-y-4">
-      <InlineNotice>Gli orari sono modificati in ora locale e inviati al backend in UTC. Formato: HH:mm.</InlineNotice>
+      <InlineNotice>Gli orari sono gestiti nel fuso configurato dal backend e vengono inviati senza conversione. Formato: HH:mm.</InlineNotice>
       {message && <InlineNotice tone="success">{message}</InlineNotice>}
       {error && <InlineNotice tone="warning">{error}</InlineNotice>}
 

@@ -52,7 +52,9 @@ export interface paths {
          * @description Sostituisce e persiste il calendario. Il payload deve contenere
          *     esattamente i sette giorni canonici. Gli intervalli dello stesso giorno
          *     non possono sovrapporsi e `ora_inizio` deve precedere `ora_fine`.
-         *     Gli orari sono interpretati in UTC; la fine dell'intervallo è esclusa.
+         *     Gli orari sono interpretati nel `fuso_orario` configurato; quando
+         *     `ora_legale` è true vengono applicate automaticamente le regole CET/CEST.
+         *     La fine dell'intervallo è esclusa.
          *
          */
         put: operations["updateCalendar"];
@@ -73,9 +75,9 @@ export interface paths {
         /**
          * Legge il log dei cicli di polling
          * @description Restituisce i record ordinati per timestamp crescente. Senza parametri
-         *     viene usato il giorno corrente in UTC. `da` e `a` sono inclusivi a
-         *     livello di data: il range effettivo è `[da 00:00:00Z, a + 1 giorno
-         *     00:00:00Z)`.
+         *     viene usato il giorno corrente nel `fuso_orario` configurato. `da` e `a`
+         *     sono inclusivi a livello di data: il range effettivo è `[da 00:00:00,
+         *     a + 1 giorno 00:00:00)` interpretato nel medesimo fuso.
          *
          */
         get: operations["getPollingLogs"];
@@ -97,7 +99,8 @@ export interface paths {
         /**
          * Legge il log degli errori
          * @description Restituisce gli errori ordinati per timestamp crescente. I parametri
-         *     hanno la stessa semantica di `GET /log` e sono interpretati in UTC.
+         *     hanno la stessa semantica di `GET /log` e sono interpretati nel
+         *     `fuso_orario` configurato.
          *
          */
         get: operations["getErrorLogs"];
@@ -122,7 +125,8 @@ export interface paths {
          *     lo stato dal relay e temperatura/umidità esterne da Open-Meteo.
          *     `temperatura_target` è il target risolto dalla configurazione al momento
          *     della richiesta: override se attivo, altrimenti intervallo calendario
-         *     UTC corrente. È `null` quando non esiste alcun target attivo.
+         *     corrente nel `fuso_orario` configurato, con eventuale ora legale.
+         *     È `null` quando non esiste alcun target attivo.
          *
          */
         get: operations["getCurrentState"];
@@ -320,8 +324,9 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** @description Configurazione runtime completa. I valori numerici di temperatura
-         *     devono avere una sola cifra decimale. Se `override_attivo` è true,
-         *     `temperatura_override` è obbligatoria; se è false può essere null.
+         *     devono avere una sola cifra decimale. `fuso_orario` è un identificatore
+         *     IANA; `ora_legale` abilita le regole DST automatiche del fuso. Se
+         *     `override_attivo` è true, `temperatura_override` è obbligatoria; se è false può essere null.
          *      */
         SystemConfiguration: {
             /**
@@ -375,6 +380,18 @@ export interface components {
              * @example false
              */
             debug_mode: boolean;
+            /**
+             * @description Identificatore IANA del fuso usato dal calendario.
+             * @default Europe/Rome
+             * @example Europe/Rome
+             */
+            fuso_orario: string;
+            /**
+             * @description Se true applica automaticamente le regole DST del fuso; se false usa l'offset standard.
+             * @default true
+             * @example true
+             */
+            ora_legale: boolean;
             /**
              * @description Abilita le notifiche degli errori tramite ntfy.
              * @default true
@@ -440,12 +457,12 @@ export interface components {
         CalendarIntervals: components["schemas"]["TimeInterval"][];
         TimeInterval: {
             /**
-             * @description Ora UTC di inizio, inclusiva. Sono accettati `HH:mm` e `HH:mm:ss`.
+             * @description Ora locale di inizio nel `fuso_orario` configurato, inclusiva. Sono accettati `HH:mm` e `HH:mm:ss`.
              * @example 06:00
              */
             ora_inizio: string;
             /**
-             * @description Ora UTC di fine, esclusiva; deve essere successiva a `ora_inizio`.
+             * @description Ora locale di fine nel `fuso_orario` configurato, esclusiva; deve essere successiva a `ora_inizio`.
              * @example 08:00
              */
             ora_fine: string;
@@ -511,8 +528,8 @@ export interface components {
             id: number;
             /**
              * Format: date-time
-             * @description Timestamp del ciclo in UTC.
-             * @example 2026-09-04T10:00:00.000000000Z
+             * @description Timestamp del ciclo nel `fuso_orario` configurato, senza conversione UTC.
+             * @example 2026-09-04T10:00:00.000000000
              */
             data_ora: string;
             /** @example true */
@@ -562,8 +579,8 @@ export interface components {
             id: number;
             /**
              * Format: date-time
-             * @description Timestamp dell'errore in UTC.
-             * @example 2026-09-04T10:00:00.000000000Z
+             * @description Timestamp dell'errore nel `fuso_orario` configurato, senza conversione UTC.
+             * @example 2026-09-04T10:00:00.000000000
              */
             data_ora: string;
             /**
@@ -591,7 +608,7 @@ export interface components {
         ApiError: {
             /**
              * Format: date-time
-             * @description Istante UTC della risposta di errore.
+             * @description Timestamp della risposta di errore nel `fuso_orario` configurato.
              */
             timestamp: string;
             /**
@@ -682,12 +699,12 @@ export interface components {
     };
     parameters: {
         /**
-         * @description Data iniziale inclusiva in UTC. Default: giorno corrente UTC, oppure il valore di `a` se `da` è assente.
+         * @description Data iniziale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato, oppure il valore di `a` se `da` è assente.
          * @example 2026-09-01
          */
         FromDate: string;
         /**
-         * @description Data finale inclusiva in UTC. Default: giorno corrente UTC.
+         * @description Data finale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato.
          * @example 2026-09-04
          */
         ToDate: string;
@@ -739,6 +756,8 @@ export interface operations {
                  *       "ntfy_url": "https://ntfy.sh",
                  *       "ntfy_topic": "sliverd",
                  *       "debug_mode": false,
+                 *       "fuso_orario": "Europe/Rome",
+                 *       "ora_legale": true,
                  *       "notifiche_errori_abilitate": true,
                  *       "meteo_esterno_url": "https://api.open-meteo.com",
                  *       "meteo_esterno_latitudine": 37.6167,
@@ -838,12 +857,12 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Data iniziale inclusiva in UTC. Default: giorno corrente UTC, oppure il valore di `a` se `da` è assente.
+                 * @description Data iniziale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato, oppure il valore di `a` se `da` è assente.
                  * @example 2026-09-01
                  */
                 da?: components["parameters"]["FromDate"];
                 /**
-                 * @description Data finale inclusiva in UTC. Default: giorno corrente UTC.
+                 * @description Data finale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato.
                  * @example 2026-09-04
                  */
                 a?: components["parameters"]["ToDate"];
@@ -872,12 +891,12 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Data iniziale inclusiva in UTC. Default: giorno corrente UTC, oppure il valore di `a` se `da` è assente.
+                 * @description Data iniziale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato, oppure il valore di `a` se `da` è assente.
                  * @example 2026-09-01
                  */
                 da?: components["parameters"]["FromDate"];
                 /**
-                 * @description Data finale inclusiva in UTC. Default: giorno corrente UTC.
+                 * @description Data finale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato.
                  * @example 2026-09-04
                  */
                 a?: components["parameters"]["ToDate"];

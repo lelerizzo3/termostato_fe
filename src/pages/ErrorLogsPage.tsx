@@ -1,11 +1,11 @@
 import { FormEvent, useState } from 'react';
 import type { ErrorLogRecord } from '../api/types';
 import { useErrorLogs } from '../hooks/useApi';
-import { formatLocalDateTime, utcToday } from '../lib/datetime';
+import { formatLocalDateTime, localToday } from '../lib/datetime';
 import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../components/common/States';
 
 export function ErrorLogsPage() {
-  const today = utcToday();
+  const today = localToday();
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [appliedFrom, setAppliedFrom] = useState(today);
@@ -28,11 +28,11 @@ export function ErrorLogsPage() {
     <div className="space-y-4">
       <form className="app-card grid grid-cols-2 gap-3" onSubmit={applyRange}>
         <label>
-          <span className="field-label">Da (UTC)</span>
+          <span className="field-label">Da (ora locale)</span>
           <input className="field-input mt-2 text-left" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
         </label>
         <label>
-          <span className="field-label">A (UTC)</span>
+          <span className="field-label">A (ora locale)</span>
           <input className="field-input mt-2 text-left" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
         </label>
         <button className="btn-secondary col-span-2" type="submit">Applica intervallo</button>

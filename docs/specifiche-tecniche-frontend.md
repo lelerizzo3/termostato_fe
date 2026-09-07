@@ -32,7 +32,7 @@ per lo scenario E2E lato backend).
 | Autenticazione via `X-API-Key` | `openapi.yaml`, sez. 3.8 / 7.0 | Vedi capitolo 5 (Sicurezza): il segreto non può risiedere nel bundle |
 | Stato corrente | `openapi.yaml`, `GET /stato` | Dashboard read-only; ogni richiesta legge temperatura/umidità interne, relay e dati esterni nullable; nessun comando di attuazione dal frontend |
 | JSON in `snake_case` | `openapi.yaml` (info) | Tipi TypeScript con proprietà in snake_case; nessuna conversione automatica |
-| Date/orari in UTC | Spec funzionali RF-24/25, `openapi.yaml` | Gestione esplicita UTC ↔ visualizzazione locale (vedi cap. 7) |
+| Date/orari nel fuso configurato | Specifiche funzionali, `openapi.yaml` | Il frontend visualizza e invia i valori locali senza conversione UTC (vedi cap. 7) |
 
 ## 3. Scelte tecnologiche (con motivazione)
 
@@ -130,7 +130,7 @@ src/
     layout/                # header, bottom nav mobile, safe-area wrapper
     common/                # spinner, toast, empty-state
   lib/
-    datetime.ts            # helper UTC <-> locale
+    datetime.ts            # parsing e formattazione dei timestamp locali
     validation.ts          # schemi Zod allineati a OpenAPI
   styles/
 ```
@@ -278,6 +278,9 @@ voce). La schermata Stato è la destinazione iniziale dopo il gate.
   - `debug_mode`: toggle per notifiche informative di accensione/spegnimento.
   - `notifiche_errori_abilitate`: toggle per abilitare/disabilitare le notifiche
     di errore inviate tramite ntfy.
+  - `fuso_orario`: stringa IANA obbligatoria (es. `Europe/Rome`) usata dal
+    backend per interpretare date e orari.
+  - `ora_legale`: toggle che abilita le regole DST del fuso configurato.
   - `meteo_esterno_url`: URI del servizio meteo.
   - `meteo_esterno_latitudine` e `meteo_esterno_longitudine`: coordinate del
     punto usato per le letture esterne.
@@ -313,9 +316,11 @@ telefono: la schermata usa un layout **ad accordion**.
     l'intervallo in conflitto).
   - Orari nel formato `HH:mm` (rientra nel pattern accettato dal backend).
   - `temperatura_target` con una cifra decimale.
-- **Fuso orario**: l'utente edita e vede gli orari in **ora locale** (Italia
-  UTC+1/UTC+2 con DST automatico); il front-end converte in UTC prima del `PUT`
-  e da UTC a locale in `GET` (vedi cap. 7). Il payload sul filo resta in UTC.
+- **Fuso orario**: l'utente edita e vede gli orari nel fuso civile indicato dal
+  backend tramite `fuso_orario` (IANA, default `Europe/Rome`). Il parametro
+  `ora_legale` indica se il backend applica le regole DST del fuso. Il frontend
+  non converte gli orari: legge e invia `ora_inizio`/`ora_fine` nello stesso
+  formato locale (`HH:mm`) restituito dal contratto.
 - **Salvataggio**: un unico pulsante "Salva" persiste l'intero calendario. Il
   `PUT` deve contenere **esattamente i 7 giorni**; i giorni senza intervalli
   vanno inviati come array vuoti.
@@ -324,8 +329,8 @@ telefono: la schermata usa un layout **ad accordion**.
 
 ### 6.4 Schermata Log di polling (`/log`)
 
-- `GET /log?da=&a=` con parametri opzionali (`format: date`, UTC).
-- Default senza parametri → giorno corrente UTC (gestito dal backend).
+- `GET /log?da=&a=` con parametri opzionali (`format: date`) nel fuso configurato.
+- Default senza parametri → giorno corrente del fuso configurato (gestito dal backend).
 - Filtro con due date-picker (`da`, `a`); validazione client `da <= a`.
 
 **Volume dati.** Il backend scrive un record **ad ogni ciclo di polling** (con
@@ -389,35 +394,29 @@ forma di **tabella compatta**.
   chiamata leggera (es. `GET /actuator/health` o `GET /stato`): se risponde
   `401`, la chiave è rifiutata e non viene salvata come valida.
 
-## 7. Gestione di data e ora (UTC ↔ ora locale)
+## 7. Gestione di data e ora nel fuso configurato
 
-- Il back-end tratta, memorizza e restituisce **tutti** gli orari e i timestamp
-  esclusivamente in **UTC** (specifiche funzionali RF-24/RF-25 e `openapi.yaml`).
-  Il front-end è responsabile della conversione nell'**ora locale** del
-  dispositivo in visualizzazione e della riconversione in UTC prima dell'invio.
-- Per un utente in Italia l'offset è **UTC+1** in ora solare e **UTC+2** in ora
-  legale (CEST). La conversione deve seguire automaticamente il cambio DST.
-- Il formato orario mostrato ed editato è **`HH:mm`**, come regola di interfaccia
-  frontend; il backend accetta anche `HH:mm:ss` secondo il contratto OpenAPI.
-- **Regole di progettazione:**
-  - Tutte le richieste inviano date/orari in UTC; tutte le risposte sono
-    interpretate come UTC.
-  - I timestamp dei record (`data_ora`, formato `date-time`) vengono
-    **visualizzati** convertiti nel fuso locale del dispositivo. Opzionale un
-    toggle "mostra UTC" per debug.
-  - Gli orari del **calendario** vengono **editati in ora locale** dall'utente
-    (più intuitivo) e convertiti in UTC prima del `PUT`; in `GET` si esegue la
-    conversione inversa da UTC a locale. Va gestito il caso in cui la conversione
-    faccia attraversare la mezzanotte (es. `23:30` locale → giorno/valore UTC
-    diverso): mostrare l'informazione in modo chiaro.
-  - Centralizzare le conversioni in `lib/datetime.ts`. L'offset non va
-    hard-codato: usare il fuso del dispositivo (o un fuso configurato) così che
-    il passaggio ora legale/solare sia gestito automaticamente.
-  - Preferire l'API nativa `Intl.DateTimeFormat` con `timeZone` esplicito; se le
-    conversioni con DST risultano complesse, valutare una libreria leggera
-    (es. `date-fns-tz`) — resta comunque una dipendenza opzionale.
-  - Attenzione WebKit/Safari: evitare il parsing di stringhe date non standard;
-    usare formati ISO 8601 con `Z`.
+- Il backend interpreta, memorizza e restituisce date, timestamp e intervalli del
+  calendario nel fuso civile configurato da `fuso_orario` (IANA, default
+  `Europe/Rome`). `ora_legale` abilita o disabilita l'applicazione automatica
+  delle regole DST del database IANA.
+- Il frontend **non esegue conversioni UTC↔locale**: i valori `HH:mm` del
+  calendario vengono mostrati e inviati invariati; i filtri `da`/`a` dei log
+  rappresentano date del fuso configurato.
+- Il formato orario mostrato ed editato è **`HH:mm`**. Il backend può restituire
+  timestamp ISO locali con secondi e frazioni (per esempio
+  `2026-09-04T10:00:00.000000000`) senza suffisso `Z`.
+- I timestamp `data_ora` dei log vengono ordinati e formattati come wall-clock
+  locale ricevuto dal backend. Il frontend non applica l'offset del dispositivo
+  né modifica giorno, ora o intervalli durante il parsing.
+- Centralizzare in `lib/datetime.ts` il parsing dei timestamp locali, la
+  formattazione `HH:mm`, la costruzione del giorno corrente locale e la
+  formattazione dell'asse temporale del grafico. Un eventuale valore neutro
+  usato internamente per ordinare i punti non costituisce una conversione di
+  fuso e non viene inviato al backend.
+- La configurazione del fuso viene modificata esclusivamente tramite i campi
+  `fuso_orario` e `ora_legale` della schermata `/config`; il calendario e i log
+  usano il comportamento deciso dal backend dopo il salvataggio.
 
 ## 8. Requisiti non funzionali del frontend
 

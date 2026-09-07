@@ -3,7 +3,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { FixedSizeList, ListChildComponentProps } from 'react-window';
 import type { PollingLogRecord } from '../api/types';
 import { usePollingLogs } from '../hooks/useApi';
-import { formatLocalTime, parseApiTimestamp, utcToday } from '../lib/datetime';
+import { formatLocalTime, formatWallClockDateTime, formatWallClockTime, localToday, parseApiTimestamp } from '../lib/datetime';
 import { ErrorState, EmptyState, InlineNotice, LoadingState } from '../components/common/States';
 
 interface ChartRecord extends PollingLogRecord {
@@ -12,7 +12,7 @@ interface ChartRecord extends PollingLogRecord {
 }
 
 export function LogsPage() {
-  const today = utcToday();
+  const today = localToday();
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [appliedFrom, setAppliedFrom] = useState(today);
@@ -50,11 +50,11 @@ export function LogsPage() {
     <div className="space-y-4">
       <form className="app-card grid grid-cols-2 gap-3" onSubmit={applyRange}>
         <label>
-          <span className="field-label">Da (UTC)</span>
+          <span className="field-label">Da (ora locale)</span>
           <input className="field-input mt-2 text-left" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
         </label>
         <label>
-          <span className="field-label">A (UTC)</span>
+          <span className="field-label">A (ora locale)</span>
           <input className="field-input mt-2 text-left" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
         </label>
         <button className="btn-secondary col-span-2" type="submit">Applica intervallo</button>
@@ -78,7 +78,7 @@ export function LogsPage() {
                     dataKey="timestampMs"
                     type="number"
                     domain={['dataMin', 'dataMax']}
-                    tickFormatter={(value: number) => new Date(value).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                    tickFormatter={(value: number) => formatWallClockTime(value)}
                     stroke="#94a3b8"
                     tick={{ fontSize: 11 }}
                   />
@@ -86,7 +86,7 @@ export function LogsPage() {
                   <YAxis yAxisId="humidity" orientation="right" stroke="#c084fc" tick={{ fontSize: 11 }} domain={[0, 100]} />
                   <YAxis yAxisId="relay" hide domain={[0, 1]} />
                   <Tooltip
-                    labelFormatter={(value) => new Date(Number(value)).toLocaleString('it-IT')}
+                    labelFormatter={(value) => formatWallClockDateTime(Number(value))}
                     formatter={(value: number, name: string) => {
                       if (name === 'relayIndicator') return [value === 1 ? 'ON' : 'OFF', 'Caldaia'];
                       const isHumidity = name === 'umidita_rilevata' || name === 'umidita_esterna';

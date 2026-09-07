@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyCalendar, localCalendarToUtc, validateIntervals } from './calendar';
+import { emptyCalendar, sortIntervals, validateIntervals } from './calendar';
 
 describe('calendar helpers', () => {
   it('rifiuta intervalli con fine precedente o uguale all’inizio', () => {
@@ -18,12 +18,9 @@ describe('calendar helpers', () => {
     expect(Object.keys(emptyCalendar().giorni)).toHaveLength(7);
   });
 
-  it('converte gli intervalli locali in un calendario UTC valido', () => {
+  it('mantiene gli orari locali nel calendario inviato', () => {
     const source = emptyCalendar();
     source.giorni.lunedi = [{ ora_inizio: '06:00', ora_fine: '08:00', temperatura_target: 20.5 }];
-    const converted = localCalendarToUtc(source);
-    expect(converted.warnings).toHaveLength(0);
-    expect(Object.values(converted.calendar.giorni).flat()).toHaveLength(1);
-    expect(Object.values(converted.calendar.giorni).flat()[0].temperatura_target).toBe(20.5);
+    expect(sortIntervals(source.giorni.lunedi)).toEqual(source.giorni.lunedi);
   });
 });

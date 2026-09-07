@@ -20,6 +20,8 @@ const configurationSchema = z.object({
   ntfy_url: z.string().url('Inserisci un URL valido.'),
   ntfy_topic: z.string().min(1, 'Obbligatorio.'),
   debug_mode: z.boolean(),
+  fuso_orario: z.string().min(1, 'Obbligatorio.').regex(/^[A-Za-z0-9._+-]+(?:\/[A-Za-z0-9._+-]+)*$/, 'Usa un identificatore IANA, ad esempio Europe/Rome.'),
+  ora_legale: z.boolean(),
   notifiche_errori_abilitate: z.boolean(),
   meteo_esterno_url: z.string().url('Inserisci un URL valido.'),
   meteo_esterno_latitudine: z.coerce.number().min(-90, 'Latitudine non valida.').max(90, 'Latitudine non valida.'),
@@ -51,6 +53,8 @@ export function ConfigPage() {
       ntfy_url: '',
       ntfy_topic: '',
       debug_mode: false,
+      fuso_orario: 'Europe/Rome',
+      ora_legale: true,
       notifiche_errori_abilitate: true,
       meteo_esterno_url: 'https://api.open-meteo.com',
       meteo_esterno_latitudine: 37.6167,
@@ -88,6 +92,13 @@ export function ConfigPage() {
         <h2 className="section-title">Regolazione</h2>
         <NumberField label="Soglia attivazione (°C)" step="0.1" registration={form.register('soglia_attivazione')} error={form.formState.errors.soglia_attivazione?.message} />
         <NumberField label="Intervallo polling (secondi)" step="1" registration={form.register('intervallo_polling_secondi')} error={form.formState.errors.intervallo_polling_secondi?.message} />
+      </section>
+
+      <section className="app-card">
+        <h2 className="section-title">Fuso orario</h2>
+        <TextField label="Fuso orario IANA" registration={form.register('fuso_orario')} error={form.formState.errors.fuso_orario?.message} />
+        <ToggleRow label="Ora legale automatica" registration={form.register('ora_legale')} />
+        <p className="mt-2 text-xs leading-5 text-slate-400">Il backend interpreta calendario, log e filtri data nel fuso indicato, senza conversione UTC nel frontend.</p>
       </section>
 
       <section className="app-card">

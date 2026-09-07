@@ -48,11 +48,11 @@ sovrascriverlo in sviluppo con `VITE_API_BASE_URL`.
 - `/stato`: dashboard read-only con `GET /stato`, temperatura e umidità interne,
   target, relay, temperatura e umidità esterne e refresh automatico ogni 60 secondi.
 - `/config`: configurazione completa (`GET`/`PUT /config`), inclusi il flag
-  `notifiche_errori_abilitate` e i parametri del meteo esterno, raggiungibile da
-  Impostazioni.
-- `/calendario`: editor accordion dei sette giorni con conversione ora locale ↔ UTC.
-- `/log`: grafico Recharts e tabella dettaglio virtualizzata.
-- `/errori`: log errori filtrabili per intervallo UTC.
+  `notifiche_errori_abilitate`, `fuso_orario`, `ora_legale` e i parametri del
+  meteo esterno, raggiungibile da Impostazioni.
+- `/calendario`: editor accordion dei sette giorni con orari nel fuso configurato dal backend, senza conversione UTC.
+- `/log`: grafico Recharts e tabella dettaglio virtualizzata, con filtri nel fuso configurato.
+- `/errori`: log errori filtrabili per intervallo di date nel fuso configurato.
 - `/settings`: gestione API-key e collegamento alla configurazione.
 
 ## Deploy Apache sotto `/termostato`
