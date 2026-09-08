@@ -37,6 +37,22 @@ export function emptyCalendar(): CalendarDocument {
   };
 }
 
+export function normalizeTimeToHHmm(value: string): string {
+  return value.slice(0, 5);
+}
+
+export function normalizeCalendarTimes(source: CalendarDocument): CalendarDocument {
+  const normalized = emptyCalendar();
+  for (const day of DAY_KEYS) {
+    normalized.giorni[day] = source.giorni[day].map((interval) => ({
+      ...interval,
+      ora_inizio: normalizeTimeToHHmm(interval.ora_inizio),
+      ora_fine: normalizeTimeToHHmm(interval.ora_fine)
+    }));
+  }
+  return normalized;
+}
+
 export function timeToMinutes(value: string): number {
   const [hours, minutes] = value.slice(0, 5).split(':').map(Number);
   return hours * 60 + minutes;

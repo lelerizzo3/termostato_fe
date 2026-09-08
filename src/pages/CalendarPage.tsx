@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DayKey, TimeInterval } from '../api/types';
 import { useCalendar, useUpdateCalendar } from '../hooks/useApi';
-import { DAY_KEYS, DAY_LABELS, emptyCalendar, sortIntervals, validateIntervals } from '../lib/calendar';
+import { DAY_KEYS, DAY_LABELS, emptyCalendar, normalizeCalendarTimes, sortIntervals, validateIntervals } from '../lib/calendar';
 import { ErrorState, InlineNotice, LoadingState } from '../components/common/States';
+import { TemperatureStepper } from '../components/common/TemperatureStepper';
 
 function currentDay(): DayKey {
   return DAY_KEYS[(new Date().getDay() + 6) % 7];
@@ -13,12 +14,14 @@ export function CalendarPage() {
   const update = useUpdateCalendar();
   const [calendar, setCalendar] = useState(emptyCalendar());
   const [expandedDay, setExpandedDay] = useState<DayKey | null>(currentDay());
+  const [copySource, setCopySource] = useState<DayKey | null>(null);
+  const [copyTargets, setCopyTargets] = useState<DayKey[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (query.data) {
-      setCalendar(query.data);
+      setCalendar(normalizeCalendarTimes(query.data));
       setError(null);
     }
   }, [query.data]);
@@ -54,22 +57,44 @@ export function CalendarPage() {
     setMessage(null);
   }
 
-  function copyDay(source: DayKey) {
-    const target = window.prompt('Copia intervalli su quale giorno? (lunedi, martedi, …)');
-    if (!target || !DAY_KEYS.includes(target as DayKey) || target === source) return;
-    const targetDay = target as DayKey;
-    setCalendar((previous) => ({ giorni: { ...previous.giorni, [targetDay]: previous.giorni[source].map((interval) => ({ ...interval })) } }));
-    setMessage(`Intervalli copiati su ${DAY_LABELS[targetDay]}.`);
+  function openCopyPanel(source: DayKey) {
+    if (copySource === source) {
+      setCopySource(null);
+      return;
+    }
+    setCopySource(source);
+    setCopyTargets([]);
+    setMessage(null);
+  }
+
+  function toggleCopyTarget(day: DayKey) {
+    setCopyTargets((previous) => previous.includes(day) ? previous.filter((item) => item !== day) : [...previous, day]);
+  }
+
+  function confirmCopy(source: DayKey) {
+    if (copyTargets.length === 0) return;
+    setCalendar((previous) => {
+      const nextDays = { ...previous.giorni };
+      for (const target of copyTargets) {
+        nextDays[target] = previous.giorni[source].map((interval) => ({ ...interval }));
+      }
+      return { giorni: nextDays };
+    });
+    const labels = copyTargets.map((target) => DAY_LABELS[target]).join(', ');
+    setMessage(`Intervalli copiati su ${labels}.`);
+    setCopySource(null);
+    setCopyTargets([]);
   }
 
   async function save() {
-    const validationError = DAY_KEYS.map((day) => dayErrors[day]).find(Boolean);
+    const payload = normalizeCalendarTimes(calendar);
+    const validationError = DAY_KEYS.map((day) => validateIntervals(payload.giorni[day])).find(Boolean);
     if (validationError) {
       setError(validationError);
       return;
     }
     try {
-      await update.mutateAsync(calendar);
+      await update.mutateAsync(payload);
       setMessage('Calendario salvato.');
       setError(null);
     } catch {
@@ -97,19 +122,48 @@ export function CalendarPage() {
                 {intervals.map((interval, index) => {
                   const actualIndex = calendar.giorni[day].indexOf(interval);
                   return (
-                    <div className="grid grid-cols-[1fr_auto_1fr_1fr_auto] items-center gap-1.5" key={`${day}-${index}`}>
-                      <input className="field-input px-2 text-center text-sm" type="time" value={interval.ora_inizio} onChange={(event) => updateInterval(day, actualIndex, { ora_inizio: event.target.value })} />
-                      <span className="text-slate-500">–</span>
-                      <input className="field-input px-2 text-center text-sm" type="time" value={interval.ora_fine} onChange={(event) => updateInterval(day, actualIndex, { ora_fine: event.target.value })} />
-                      <input className="field-input px-2 text-center text-sm" type="number" step="0.1" value={interval.temperatura_target} onChange={(event) => updateInterval(day, actualIndex, { temperatura_target: Number(event.target.value) })} aria-label={`Temperatura target ${DAY_LABELS[day]} ${index + 1}`} />
-                      <button className="min-h-11 px-2 text-xl text-red-300" type="button" aria-label={`Rimuovi intervallo ${index + 1}`} onClick={() => removeInterval(day, actualIndex)}>×</button>
+                    <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-2 space-y-2" key={`${day}-${index}`}>
+                      <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-1.5">
+                        <input className="field-input px-2 text-center text-sm" type="time" value={interval.ora_inizio} onChange={(event) => updateInterval(day, actualIndex, { ora_inizio: event.target.value })} aria-label={`Ora inizio ${DAY_LABELS[day]} ${index + 1}`} />
+                        <span className="text-slate-500">–</span>
+                        <input className="field-input px-2 text-center text-sm" type="time" value={interval.ora_fine} onChange={(event) => updateInterval(day, actualIndex, { ora_fine: event.target.value })} aria-label={`Ora fine ${DAY_LABELS[day]} ${index + 1}`} />
+                        <button className="min-h-11 px-2 text-xl text-red-300" type="button" aria-label={`Rimuovi intervallo ${index + 1}`} onClick={() => removeInterval(day, actualIndex)}>×</button>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="field-label shrink-0">Temperatura (°C)</span>
+                        <TemperatureStepper
+                          value={interval.temperatura_target}
+                          onChange={(next) => updateInterval(day, actualIndex, { temperatura_target: next })}
+                          ariaLabel={`Temperatura target ${DAY_LABELS[day]} ${index + 1}`}
+                        />
+                      </div>
                     </div>
                   );
                 })}
                 <div className="flex gap-2">
                   <button className="btn-secondary flex-1" type="button" onClick={() => addInterval(day)}>+ Intervallo</button>
-                  <button className="btn-secondary flex-1" type="button" onClick={() => copyDay(day)}>Copia su…</button>
+                  <button className="btn-secondary flex-1" type="button" onClick={() => openCopyPanel(day)} aria-expanded={copySource === day}>Copia su…</button>
                 </div>
+                {copySource === day && (
+                  <div className="rounded-xl border border-slate-600 bg-slate-800/80 p-3 space-y-3">
+                    <p className="text-sm text-slate-300">Seleziona i giorni su cui copiare gli intervalli di {DAY_LABELS[day]}:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {DAY_KEYS.filter((target) => target !== day).map((target) => {
+                        const checked = copyTargets.includes(target);
+                        return (
+                          <label className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition ${checked ? 'border-orange-500 bg-orange-500/10 text-orange-100' : 'border-slate-600 bg-slate-700 text-slate-200'}`} key={target}>
+                            <input className="h-4 w-4 accent-orange-500" type="checkbox" checked={checked} onChange={() => toggleCopyTarget(target)} />
+                            {DAY_LABELS[target]}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="btn-secondary flex-1" type="button" onClick={() => { setCopySource(null); setCopyTargets([]); }}>Annulla</button>
+                      <button className="btn-primary flex-1" type="button" onClick={() => confirmCopy(day)} disabled={copyTargets.length === 0}>Copia ({copyTargets.length})</button>
+                    </div>
+                  </div>
+                )}
                 {dayErrors[day] && <p className="text-sm text-red-300">{dayErrors[day]}</p>}
               </div>
             )}

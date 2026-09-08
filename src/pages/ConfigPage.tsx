@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useConfiguration, useUpdateConfiguration } from '../hooks/useApi';
 import type { SystemConfiguration } from '../api/types';
 import { ErrorState, FieldError, InlineNotice, LoadingState } from '../components/common/States';
+import { TemperatureStepper } from '../components/common/TemperatureStepper';
 
 const decimal = z.coerce.number().refine((value) => Number.isFinite(value) && Math.abs(value * 10 - Math.round(value * 10)) < 1e-8, 'Usa una sola cifra decimale.');
 const nonNegativeDecimal = z.coerce.number().min(0, 'Non può essere negativa.').refine((value) => Math.abs(value * 10 - Math.round(value * 10)) < 1e-8, 'Usa una sola cifra decimale.');
@@ -67,6 +68,7 @@ export function ConfigPage() {
   });
   const apiKeys = form.watch('api_keys');
   const overrideActive = form.watch('override_attivo');
+  const overrideTemperature = form.watch('temperatura_override');
 
   useEffect(() => {
     if (configuration.data) form.reset(configuration.data);
@@ -104,7 +106,18 @@ export function ConfigPage() {
       <section className="app-card">
         <h2 className="section-title">Override manuale</h2>
         <ToggleRow label="Override attivo" registration={form.register('override_attivo')} />
-        <NumberField label="Temperatura override (°C)" step="0.1" disabled={!overrideActive} registration={form.register('temperatura_override', { setValueAs: (value) => value === '' ? null : Number(value) })} error={form.formState.errors.temperatura_override?.message} />
+        <label className="block border-b border-slate-700 py-3 last:border-0">
+          <span className="field-label">Temperatura override (°C)</span>
+          <div className="mt-2 flex justify-end">
+            <TemperatureStepper
+              value={overrideTemperature ?? null}
+              disabled={!overrideActive}
+              ariaLabel="Temperatura override"
+              onChange={(next) => form.setValue('temperatura_override', next, { shouldDirty: true, shouldValidate: true })}
+            />
+          </div>
+          <FieldError message={form.formState.errors.temperatura_override?.message} />
+        </label>
         <p className="mt-2 text-xs text-slate-400">Quando attivo, il calendario viene ignorato.</p>
       </section>
 
