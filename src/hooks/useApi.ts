@@ -42,7 +42,12 @@ export function useHealth() {
 }
 
 export function useConfiguration() {
-  return useQuery({ queryKey: queryKeys.configuration, queryFn: getConfiguration });
+  return useQuery({
+    queryKey: queryKeys.configuration,
+    queryFn: getConfiguration,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false
+  });
 }
 
 export function useUpdateConfiguration() {

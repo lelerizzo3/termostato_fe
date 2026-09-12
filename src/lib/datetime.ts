@@ -97,3 +97,57 @@ export function localNowTime(): string {
   return deviceTimeFormatter.format(new Date());
 }
 
+/**
+ * Converte un timestamp del backend (ISO locale senza offset, es.
+ * `2026-09-13T08:00:00`) nel formato accettato da un input `datetime-local`
+ * (`YYYY-MM-DDTHH:mm`). Nessuna conversione di fuso: si preservano i valori
+ * wall-clock ricevuti, coerentemente con il resto dell'app.
+ * Restituisce stringa vuota per valori nulli o non parsabili.
+ */
+export function apiTimestampToLocalInput(value: string | null | undefined): string {
+  if (!value) return '';
+  const match = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(normalizeIsoTimestamp(value));
+  if (!match) return '';
+  const [, year, month, day, hours, minutes] = match;
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+/**
+ * Serializza il valore di un input `datetime-local` (`YYYY-MM-DDTHH:mm` oppure
+ * `YYYY-MM-DDTHH:mm:ss`) nel formato ISO locale senza offset né suffisso `Z`
+ * atteso dal backend (`YYYY-MM-DDTHH:mm:ss`, secondi normalizzati a `00`).
+ * Restituisce null per input vuoto.
+ */
+export function localInputToApiTimestamp(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/.exec(value);
+  if (!match) return null;
+  const [, year, month, day, hours, minutes, seconds] = match;
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds ?? '00'}`;
+}
+
+/**
+ * Verifica che un timestamp wall-clock locale sia nel futuro rispetto all'orario
+ * civile corrente del dispositivo. Il confronto avviene sulla stessa base
+ * wall-clock (nessuna conversione di fuso), coerente con la validazione del
+ * backend eseguita in orario locale.
+ */
+export function isFutureLocalTimestamp(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/.exec(value);
+  if (!match) return false;
+  const [, year, month, day, hours, minutes, seconds] = match.map(Number) as unknown as number[];
+  const target = new Date(year, month - 1, day, hours, minutes, seconds || 0, 0);
+  if (Number.isNaN(target.getTime())) return false;
+  return target.getTime() > Date.now();
+}
+
+/**
+ * Formattazione leggibile "GG/MM alle HH:mm" di un timestamp wall-clock locale,
+ * per mostrare all'utente fino a quando la forzatura resterà attiva.
+ */
+export function formatOverrideEnd(value: string | null | undefined): string {
+  if (!value) return '—';
+  return formatLocalDateTime(value);
+}
+

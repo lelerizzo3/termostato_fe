@@ -65,8 +65,15 @@ Questo meccanismo evita accensioni e spegnimenti troppo frequenti (effetto ister
 |---|---|---|
 | `override_attivo` | booleano | Se `true`, il calendario settimanale viene ignorato |
 | `temperatura_override` | decimale | Temperatura target da mantenere quando l'override è attivo |
+| `override_fine` | data-ora locale (opzionale) | Istante di fine forzatura in orario civile locale; alla scadenza la forzatura si disattiva e riprende il calendario |
 
 Quando `override_attivo` è `true`, il sistema ignora completamente il calendario e utilizza `temperatura_override` come unico riferimento, applicando comunque la soglia di attivazione.
+
+Il campo opzionale `override_fine` indica quando la forzatura deve terminare. È espresso in orario civile locale con lo stesso `fuso_orario`/`ora_legale` del calendario (formato ISO senza offset, es. `2026-09-13T08:00`). È rilevante solo con `override_attivo = true`; se la forzatura non è attiva viene ignorato e azzerato. Se assente, la forzatura resta a tempo indeterminato (comportamento invariato).
+
+Quando l'ora corrente raggiunge o supera `override_fine`, al successivo ciclo di controllo il sistema disattiva automaticamente la forzatura (`override_attivo` torna `false`, `temperatura_override` e `override_fine` vengono azzerati), **persiste** la nuova configurazione — così `GET /config` riflette il ripristino ed è di conferma — e invia una notifica informativa. Il ripristino della fascia successiva del calendario (se si vuole far terminare la forzatura all'inizio della prossima fascia) si ottiene calcolando lato client l'istante di inizio di quella fascia e inviandolo come `override_fine`.
+
+Un `override_fine` già trascorso rispetto all'ora corrente viene rifiutato in fase di aggiornamento della configurazione (`PUT /config`) con errore `400`.
 
 ### 3.3 Frequenza di polling (`intervallo_polling_secondi`)
 
@@ -156,7 +163,7 @@ X-API-Key: <api-key>
 
 Il fuso deve essere un identificatore valido del database IANA, per esempio `Europe/Rome`. La sorgente temporale interna resta un `Instant` assoluto; prima di cercare l'intervallo il sistema lo converte nel fuso configurato. Con `ora_legale = true`, il database TZDB determina automaticamente l'offset corretto per la data, compresi i passaggi primaverile e autunnale. Il flag non rappresenta una data da aggiornare manualmente a ogni cambio stagione: abilita l'applicazione automatica delle regole del fuso.
 
-I timestamp persistiti nei log e i parametri data di `GET /log` sono espressi nel `fuso_orario` configurato; questa scelta coincide con l'interpretazione locale degli intervalli del calendario.
+I timestamp persistiti nei log e i parametri data di `GET /log` restano espressi in UTC; questa scelta non modifica l'interpretazione locale degli intervalli del calendario.
 
 ---
 
@@ -313,7 +320,7 @@ Tutti gli endpoint REST del backend richiedono l'header `X-API-Key` con una chia
 Il servizio esegue a ogni richiesta le seguenti letture:
 
 1. legge `temperatura` e `umidita` nella singola risposta del client REST del sensore interno;
-2. calcola `temperatura_target` dalla configurazione runtime: usa `temperatura_override` se `override_attivo = true`, altrimenti risolve l'intervallo attivo del calendario nel `fuso_orario` configurato;
+2. calcola `temperatura_target` dalla configurazione runtime: usa `temperatura_override` se `override_attivo = true`, altrimenti risolve l'intervallo attivo del calendario in UTC;
 3. legge `relay_acceso` direttamente dal client REST del relay;
 4. legge `temperatura_esterna` e `umidita_esterna` dal client REST Open-Meteo usando le coordinate configurate.
 
@@ -351,10 +358,10 @@ Se non è attivo alcun override e non esiste un intervallo calendario attivo, `t
 
 | Parametro | Tipo | Descrizione |
 |---|---|---|
-| `da` | data nel `fuso_orario` configurato | Inizio del range di date (incluso) |
-| `a` | data nel `fuso_orario` configurato | Fine del range di date (incluso) |
+| `da` | data (UTC) | Inizio del range di date (incluso) |
+| `a` | data (UTC) | Fine del range di date (incluso) |
 
-Se nessun parametro viene passato, il servizio restituisce i log del **giorno corrente** nel `fuso_orario` configurato. Se viene passato solo `da`, il limite superiore è la fine del giorno corrente nel medesimo fuso.
+Se nessun parametro viene passato, il servizio restituisce i log del **giorno corrente** in UTC. Se viene passato solo `da`, il limite superiore è la fine del giorno corrente.
 
 ### 7.4 Log di errore
 
@@ -366,10 +373,10 @@ Se nessun parametro viene passato, il servizio restituisce i log del **giorno co
 
 | Parametro | Tipo | Descrizione |
 |---|---|---|
-| `da` | data nel `fuso_orario` configurato | Inizio del range di date (incluso) |
-| `a` | data nel `fuso_orario` configurato | Fine del range di date (incluso) |
+| `da` | data (UTC) | Inizio del range di date (incluso) |
+| `a` | data (UTC) | Fine del range di date (incluso) |
 
-Se nessun parametro viene passato, il servizio restituisce gli errori del **giorno corrente** nel `fuso_orario` configurato. Se viene passato solo `da`, il limite superiore è la fine del giorno corrente nel medesimo fuso.
+Se nessun parametro viene passato, il servizio restituisce gli errori del **giorno corrente** in UTC. Se viene passato solo `da`, il limite superiore è la fine del giorno corrente.
 
 ---
 
@@ -451,6 +458,7 @@ Lo stato corrente della caldaia utilizzato nella logica di isteresi (zona neutra
 | RF-45 | Il parametro `notifiche_errori_abilitate` abilita o disabilita l'invio delle notifiche di errore tramite ntfy senza modificare le notifiche informative controllate da `debug_mode` |
 | RF-46 | La configurazione espone `fuso_orario`, un identificatore IANA usato per interpretare giorno e ora degli intervalli del calendario; il default è `Europe/Rome` |
 | RF-47 | Quando `ora_legale = true`, il sistema applica automaticamente le regole DST del fuso configurato; quando è `false`, usa l'offset standard del fuso |
+| RF-48 | La forzatura può avere una fine opzionale `override_fine` (data-ora in orario civile locale, stesso fuso/DST del calendario): alla scadenza il sistema disattiva automaticamente la forzatura, persiste la configurazione (`override_attivo` torna `false`) e invia una notifica informativa; un `override_fine` già trascorso è rifiutato con HTTP 400 al `PUT /config` |
 
 ---
 

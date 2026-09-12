@@ -2,10 +2,12 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useConfiguration, useUpdateConfiguration } from '../hooks/useApi';
+import { useConfiguration, useUpdateConfiguration, useCalendar } from '../hooks/useApi';
 import type { SystemConfiguration } from '../api/types';
 import { ErrorState, FieldError, InlineNotice, LoadingState } from '../components/common/States';
 import { TemperatureStepper } from '../components/common/TemperatureStepper';
+import { apiTimestampToLocalInput, formatOverrideEnd, isFutureLocalTimestamp, localInputToApiTimestamp } from '../lib/datetime';
+import { nextIntervalStart } from '../lib/calendar';
 
 const decimal = z.coerce.number().refine((value) => Number.isFinite(value) && Math.abs(value * 10 - Math.round(value * 10)) < 1e-8, 'Usa una sola cifra decimale.');
 const nonNegativeDecimal = z.coerce.number().min(0, 'Non può essere negativa.').refine((value) => Math.abs(value * 10 - Math.round(value * 10)) < 1e-8, 'Usa una sola cifra decimale.');
@@ -15,6 +17,7 @@ const configurationSchema = z.object({
   soglia_attivazione: nonNegativeDecimal,
   override_attivo: z.boolean(),
   temperatura_override: z.union([decimal, z.null()]),
+  override_fine: z.string(),
   intervallo_polling_secondi: positiveInteger,
   max_errori_consecutivi: positiveInteger,
   retention_log_giorni: positiveInteger,
@@ -35,6 +38,9 @@ const configurationSchema = z.object({
   if (value.override_attivo && value.temperatura_override === null) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['temperatura_override'], message: 'Obbligatoria quando l’override è attivo.' });
   }
+  if (value.override_attivo && value.override_fine !== '' && !isFutureLocalTimestamp(value.override_fine)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['override_fine'], message: 'La fine forzatura deve essere un istante futuro.' });
+  }
 });
 
 type ConfigurationForm = z.infer<typeof configurationSchema>;
@@ -42,12 +48,14 @@ type ConfigurationForm = z.infer<typeof configurationSchema>;
 export function ConfigPage() {
   const configuration = useConfiguration();
   const update = useUpdateConfiguration();
+  const calendar = useCalendar();
   const form = useForm<ConfigurationForm>({
     resolver: zodResolver(configurationSchema),
     defaultValues: {
       soglia_attivazione: 0.3,
       override_attivo: false,
       temperatura_override: null,
+      override_fine: '',
       intervallo_polling_secondi: 60,
       max_errori_consecutivi: 3,
       retention_log_giorni: 30,
@@ -69,9 +77,15 @@ export function ConfigPage() {
   const apiKeys = form.watch('api_keys');
   const overrideActive = form.watch('override_attivo');
   const overrideTemperature = form.watch('temperatura_override');
+  const overrideEnd = form.watch('override_fine');
 
   useEffect(() => {
-    if (configuration.data) form.reset(configuration.data);
+    if (configuration.data && !form.formState.isDirty) {
+      form.reset({
+        ...configuration.data,
+        override_fine: apiTimestampToLocalInput(configuration.data.override_fine)
+      });
+    }
   }, [configuration.data, form]);
 
   if (configuration.isLoading) return <LoadingState label="Caricamento configurazione…" />;
@@ -80,9 +94,17 @@ export function ConfigPage() {
   async function submit(values: ConfigurationForm) {
     const payload: SystemConfiguration = {
       ...values,
-      temperatura_override: values.override_attivo ? (values.temperatura_override as number | null) : null
+      temperatura_override: values.override_attivo ? (values.temperatura_override as number | null) : null,
+      override_fine: values.override_attivo ? localInputToApiTimestamp(values.override_fine) : null
     };
     await update.mutateAsync(payload);
+  }
+
+  function setNextInterval() {
+    if (!calendar.data) return;
+    const next = nextIntervalStart(calendar.data);
+    if (!next) return;
+    form.setValue('override_fine', apiTimestampToLocalInput(next), { shouldDirty: true, shouldValidate: true });
   }
 
   return (
@@ -118,6 +140,46 @@ export function ConfigPage() {
           </div>
           <FieldError message={form.formState.errors.temperatura_override?.message} />
         </label>
+        <label className="block border-b border-slate-700 py-3 last:border-0">
+          <span className="field-label">Fine forzatura (opzionale)</span>
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              className="field-input field-input-left"
+              type="datetime-local"
+              step={60}
+              disabled={!overrideActive}
+              {...form.register('override_fine')}
+            />
+            {overrideActive && overrideEnd !== '' && (
+              <button
+                className="btn-secondary min-h-11 shrink-0 px-3"
+                type="button"
+                onClick={() => form.setValue('override_fine', '', { shouldDirty: true, shouldValidate: true })}
+                aria-label="Rimuovi fine forzatura"
+              >
+                Azzera
+              </button>
+            )}
+          </div>
+          {overrideActive && (
+            <button
+              className="btn-secondary mt-2 min-h-11 w-full px-3 text-sm"
+              type="button"
+              onClick={setNextInterval}
+              disabled={!calendar.data || nextIntervalStart(calendar.data) === null}
+            >
+              Fino al prossimo cambio fascia
+            </button>
+          )}
+          <FieldError message={form.formState.errors.override_fine?.message} />
+        </label>
+        {overrideActive && (
+          <p className="mt-2 text-xs text-slate-400">
+            {overrideEnd !== '' && isFutureLocalTimestamp(overrideEnd)
+              ? `Forzatura attiva fino al ${formatOverrideEnd(overrideEnd)}. Alla scadenza il sistema riprende il calendario automaticamente.`
+              : 'Nessuna fine impostata: la forzatura resta a tempo indeterminato finché non la disattivi.'}
+          </p>
+        )}
         <p className="mt-2 text-xs text-slate-400">Quando attivo, il calendario viene ignorato.</p>
       </section>
 

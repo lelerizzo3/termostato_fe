@@ -26,6 +26,10 @@ export interface paths {
          *     chiave attualmente autorizzata; non è possibile usare questa operazione
          *     per aggiungere la prima chiave quando `api_keys` è vuoto.
          *
+         *     Se `override_attivo` è true e `override_fine` è valorizzato, deve essere
+         *     un istante futuro rispetto all'ora corrente (orario civile locale):
+         *     un valore già trascorso viene rifiutato con `400`.
+         *
          */
         put: operations["updateConfiguration"];
         post?: never;
@@ -75,9 +79,9 @@ export interface paths {
         /**
          * Legge il log dei cicli di polling
          * @description Restituisce i record ordinati per timestamp crescente. Senza parametri
-         *     viene usato il giorno corrente nel `fuso_orario` configurato. `da` e `a`
-         *     sono inclusivi a livello di data: il range effettivo è `[da 00:00:00,
-         *     a + 1 giorno 00:00:00)` interpretato nel medesimo fuso.
+         *     viene usato il giorno corrente in UTC. `da` e `a` sono inclusivi a
+         *     livello di data: il range effettivo è `[da 00:00:00Z, a + 1 giorno
+         *     00:00:00Z)`.
          *
          */
         get: operations["getPollingLogs"];
@@ -99,8 +103,7 @@ export interface paths {
         /**
          * Legge il log degli errori
          * @description Restituisce gli errori ordinati per timestamp crescente. I parametri
-         *     hanno la stessa semantica di `GET /log` e sono interpretati nel
-         *     `fuso_orario` configurato.
+         *     hanno la stessa semantica di `GET /log` e sono interpretati in UTC.
          *
          */
         get: operations["getErrorLogs"];
@@ -327,6 +330,8 @@ export interface components {
          *     devono avere una sola cifra decimale. `fuso_orario` è un identificatore
          *     IANA; `ora_legale` abilita le regole DST automatiche del fuso. Se
          *     `override_attivo` è true, `temperatura_override` è obbligatoria; se è false può essere null.
+         *     `override_fine` è opzionale e indica quando termina la forzatura: è un orario civile
+         *     locale (stesso fuso/DST del calendario) e, se presente su `PUT`, deve essere futuro.
          *      */
         SystemConfiguration: {
             /**
@@ -346,6 +351,17 @@ export interface components {
              * @example 20.5
              */
             temperatura_override: number | null;
+            /**
+             * Format: date-time
+             * @description Istante di fine forzatura in orario civile locale (stesso `fuso_orario`/`ora_legale`
+             *     del calendario), formato ISO senza offset (es. `2026-09-13T08:00:00`). Opzionale e
+             *     rilevante solo con `override_attivo` true; se assente la forzatura è a tempo
+             *     indeterminato. Su `PUT` deve essere futuro, altrimenti la richiesta è rifiutata con 400.
+             *     Alla scadenza la forzatura si disattiva automaticamente e viene persistita.
+             *
+             * @example 2026-09-13T08:00:00
+             */
+            override_fine?: string | null;
             /**
              * Format: int32
              * @description Intervallo del ciclo di controllo in secondi.
@@ -528,8 +544,8 @@ export interface components {
             id: number;
             /**
              * Format: date-time
-             * @description Timestamp del ciclo nel `fuso_orario` configurato, senza conversione UTC.
-             * @example 2026-09-04T10:00:00.000000000
+             * @description Timestamp del ciclo in UTC.
+             * @example 2026-09-04T10:00:00.000000000Z
              */
             data_ora: string;
             /** @example true */
@@ -579,8 +595,8 @@ export interface components {
             id: number;
             /**
              * Format: date-time
-             * @description Timestamp dell'errore nel `fuso_orario` configurato, senza conversione UTC.
-             * @example 2026-09-04T10:00:00.000000000
+             * @description Timestamp dell'errore in UTC.
+             * @example 2026-09-04T10:00:00.000000000Z
              */
             data_ora: string;
             /**
@@ -608,7 +624,7 @@ export interface components {
         ApiError: {
             /**
              * Format: date-time
-             * @description Timestamp della risposta di errore nel `fuso_orario` configurato.
+             * @description Istante UTC della risposta di errore.
              */
             timestamp: string;
             /**
@@ -699,12 +715,12 @@ export interface components {
     };
     parameters: {
         /**
-         * @description Data iniziale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato, oppure il valore di `a` se `da` è assente.
+         * @description Data iniziale inclusiva in UTC. Default: giorno corrente UTC, oppure il valore di `a` se `da` è assente.
          * @example 2026-09-01
          */
         FromDate: string;
         /**
-         * @description Data finale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato.
+         * @description Data finale inclusiva in UTC. Default: giorno corrente UTC.
          * @example 2026-09-04
          */
         ToDate: string;
@@ -750,6 +766,7 @@ export interface operations {
                  *       "soglia_attivazione": 0.3,
                  *       "override_attivo": true,
                  *       "temperatura_override": 20.5,
+                 *       "override_fine": "2026-09-13T08:00:00",
                  *       "intervallo_polling_secondi": 60,
                  *       "max_errori_consecutivi": 3,
                  *       "retention_log_giorni": 30,
@@ -857,12 +874,12 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Data iniziale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato, oppure il valore di `a` se `da` è assente.
+                 * @description Data iniziale inclusiva in UTC. Default: giorno corrente UTC, oppure il valore di `a` se `da` è assente.
                  * @example 2026-09-01
                  */
                 da?: components["parameters"]["FromDate"];
                 /**
-                 * @description Data finale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato.
+                 * @description Data finale inclusiva in UTC. Default: giorno corrente UTC.
                  * @example 2026-09-04
                  */
                 a?: components["parameters"]["ToDate"];
@@ -891,12 +908,12 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Data iniziale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato, oppure il valore di `a` se `da` è assente.
+                 * @description Data iniziale inclusiva in UTC. Default: giorno corrente UTC, oppure il valore di `a` se `da` è assente.
                  * @example 2026-09-01
                  */
                 da?: components["parameters"]["FromDate"];
                 /**
-                 * @description Data finale inclusiva nel fuso_orario configurato. Default: giorno corrente nel fuso configurato.
+                 * @description Data finale inclusiva in UTC. Default: giorno corrente UTC.
                  * @example 2026-09-04
                  */
                 a?: components["parameters"]["ToDate"];

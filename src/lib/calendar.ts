@@ -62,6 +62,42 @@ export function sortIntervals(intervals: TimeInterval[]): TimeInterval[] {
   return [...intervals].sort((a, b) => timeToMinutes(a.ora_inizio) - timeToMinutes(b.ora_inizio));
 }
 
+function dayIndexFromDate(date: Date): number {
+  // JS getDay(): 0 = domenica … 6 = sabato. DAY_KEYS parte da lunedì.
+  return (date.getDay() + 6) % 7;
+}
+
+/**
+ * Calcola l'istante di inizio della prossima fascia oraria del calendario
+ * rispetto a `from` (orario civile locale del dispositivo). Scorre fino a 7
+ * giorni in avanti per gestire il wrap settimanale. Restituisce una stringa ISO
+ * locale senza offset (`YYYY-MM-DDTHH:mm:ss`) pronta per `override_fine`, oppure
+ * null se il calendario non contiene alcuna fascia.
+ */
+export function nextIntervalStart(calendar: CalendarDocument, from: Date = new Date()): string | null {
+  const nowMinutes = from.getHours() * 60 + from.getMinutes();
+
+  for (let offset = 0; offset < 8; offset += 1) {
+    const dayIndex = (dayIndexFromDate(from) + offset) % 7;
+    const day = DAY_KEYS[dayIndex];
+    const starts = sortIntervals(calendar.giorni[day]).map((interval) => timeToMinutes(interval.ora_inizio));
+    for (const startMinutes of starts) {
+      // Oggi (offset 0) consideriamo solo gli inizi strettamente futuri.
+      if (offset === 0 && startMinutes <= nowMinutes) continue;
+      const target = new Date(from);
+      target.setDate(target.getDate() + offset);
+      target.setHours(Math.floor(startMinutes / 60), startMinutes % 60, 0, 0);
+      const year = target.getFullYear();
+      const month = String(target.getMonth() + 1).padStart(2, '0');
+      const dayOfMonth = String(target.getDate()).padStart(2, '0');
+      const hours = String(target.getHours()).padStart(2, '0');
+      const minutes = String(target.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${dayOfMonth}T${hours}:${minutes}:00`;
+    }
+  }
+  return null;
+}
+
 export function validateIntervals(intervals: TimeInterval[]): string | null {
   const sorted = sortIntervals(intervals);
   for (const interval of sorted) {

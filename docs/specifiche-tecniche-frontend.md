@@ -270,6 +270,17 @@ voce). La schermata Stato è la destinazione iniziale dopo il gate.
   - `soglia_attivazione`: number ≥ 0, step 0.1.
   - `override_attivo`: toggle. Se true → `temperatura_override` **obbligatorio**
     (Zod: refinement), altrimenti campo disabilitato/null.
+  - `override_fine`: date-time picker opzionale (`datetime-local`), rilevante solo con
+    `override_attivo = true`. Orario civile locale, stesso fuso/ora legale del calendario.
+    Serializzato in ISO **senza** offset né suffisso `Z` (`YYYY-MM-DDTHH:mm:ss`); vuoto → `null`
+    (forzatura a tempo indeterminato). Validazione client: se valorizzato deve essere **futuro**
+    (Zod refinement `isFutureLocalTimestamp`); il `400` del backend viene comunque mostrato con il
+    messaggio dell'`ApiError`. La config viene ricaricata con polling periodico (60 s) così che,
+    all'auto-disattivazione lato backend, la UI rifletta `override_attivo = false`.
+    Comodità client: pulsante "Fino al prossimo cambio fascia" che calcola lato front-end
+    (`nextIntervalStart` su `GET /config/calendario`) l'inizio della prossima fascia e lo
+    imposta come `override_fine` concreto (orario locale, senza offset). Non è una funzionalità
+    del backend.
   - `intervallo_polling_secondi`: intero ≥ 1.
   - `max_errori_consecutivi`: intero ≥ 1.
   - `retention_log_giorni`: intero ≥ 1.
