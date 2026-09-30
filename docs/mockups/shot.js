@@ -2,7 +2,10 @@ import puppeteer from 'puppeteer-core';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const CHROME =
+  process.platform === 'win32'
+    ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+    : '/usr/bin/google-chrome';
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const fileUrl = pathToFileURL(path.join(dir, 'mockups.html')).href;
 
@@ -15,6 +18,8 @@ const shots = [
   ['s-gate',   'schermata-6-gate-apikey.png'],
   ['s-logdet', 'schermata-7-log-dettaglio.png'],
   ['s-status', 'schermata-8-stato.png'],
+  ['s-shelly', 'schermata-9-dispositivi-shelly.png'],
+  ['s-monitor', 'schermata-10-monitor.png'],
 ];
 
 const browser = await puppeteer.launch({

@@ -45,6 +45,11 @@ sovrascriverlo in sviluppo con `VITE_API_BASE_URL`.
 
 ## Schermate
 
+L'app è divisa in due aree, selezionabili con i tabs nell'header (**Termostato** /
+**Dispositivi**); la bottom navigation cambia in base all'area.
+
+**Area Termostato**
+
 - `/stato`: dashboard read-only con `GET /stato`, temperatura e umidità interne,
   target, relay, temperatura e umidità esterne e refresh automatico ogni 60 secondi.
 - `/config`: configurazione completa (`GET`/`PUT /config`), inclusi il flag
@@ -54,6 +59,40 @@ sovrascriverlo in sviluppo con `VITE_API_BASE_URL`.
 - `/log`: grafico Recharts e tabella dettaglio virtualizzata, con filtri nel fuso configurato.
 - `/errori`: log errori filtrabili per intervallo di date nel fuso configurato.
 - `/settings`: gestione API-key e collegamento alla configurazione.
+
+**Area Dispositivi** (gli endpoint `/shelly/*` sono reali anche in profilo mock)
+
+Le misure sono lette in tempo reale dai dispositivi: il backend non registra
+uno storico, quindi non esistono pagine di consultazione dei consumi.
+
+- `/shelly`: elenco dispositivi configurati (`GET /shelly/dispositivi`) con lo
+  stato letto da `GET /shelly/stato/{id}`: relè comandabili (`RELAY` e
+  `PM_RELAY`, con `POST /shelly/relay/{id}/on|off` e conferma esplicita
+  `esito`/`stato_precedente` del comando) e misure di potenza, tensione e
+  corrente per i power monitor (`PM` e `PM_RELAY`). I valori non disponibili
+  sono mostrati come `—`.
+- `/shelly/monitor`: totale e monitor del consumo istantaneo dei power meter:
+  barre che crescono e cambiano colore (verde < 100 W → arancione → rosso
+  ≥ 2000 W), con intervallo di aggiornamento configurabile in secondi.
+
+## Layout orizzontale (tablet 7")
+
+Il layout verticale resta quello di riferimento per gli smartphone. Quando il
+dispositivo è in orizzontale con almeno 900 px di larghezza e 500 px di altezza
+(es. Nexus 7, 1280×800) l'app passa a un layout a due colonne sfruttando tutta
+la larghezza:
+
+- la bottom navigation fissa diventa un **rail laterale a sinistra** di 80 px,
+  così l'altezza verticale resta libera per i dati;
+- il contenuto si estende fino a 1440 px invece dei 768 px della colonna
+  verticale;
+- la pagina Monitor mette a sinistra intervallo di aggiornamento e totale
+  consumo, a destra il grafico e l'elenco dispositivi, con il grafico a **barre
+  orizzontali** (nome a sinistra, watt in fondo alla barra) e l'elenco dei
+  dispositivi su due colonne.
+
+La versione orizzontale dell'iPhone non rientra nei vincoli di altezza minima e
+continua a usare il layout verticale.
 
 ## Deploy Apache sotto `/termostato`
 
@@ -87,7 +126,15 @@ Il proxy non inietta la API-key: inoltra quella fornita dal browser nell'header
 
 ## Struttura documentale
 
-- `docs/specifiche-funzionali.md`: requisiti funzionali backend.
-- `docs/openapi.yaml`: contratto REST.
+- `docs/specifiche-funzionali.md`: requisiti funzionali backend (incl. dispositivi Shelly, sez. 7.5).
+- `docs/openapi.yaml`: contratto REST (v1.5.0 con endpoint `/shelly/*`,
+  stato unificato `/shelly/stato/{id}` e conferma esito relay
+  `esito`/`stato_precedente`).
+- `docs/modifiche-device-shelly-20260926.md`: handoff delle modifiche backend
+  che hanno rimosso lo storico consumi Shelly e introdotto
+  `GET /shelly/stato/{id}`.
+- `docs/evolutiva-shelly-frontend.md`: handoff dell'evolutiva Shelly per il frontend (superato).
+- `docs/fe-controllo-relay-shelly.md`: contratto e comportamento frontend per il
+  controllo relay (campi `esito`/`stato_precedente`, auto-off, gestione errori).
 - `docs/specifiche-tecniche-frontend.md`: decisioni e specifiche UI/deploy.
 - `docs/mockups/`: anteprime PNG e sorgente HTML.

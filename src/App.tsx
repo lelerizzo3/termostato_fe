@@ -7,6 +7,8 @@ import { CalendarPage } from './pages/CalendarPage';
 import { LogsPage } from './pages/LogsPage';
 import { ErrorLogsPage } from './pages/ErrorLogsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ShellyPage } from './pages/ShellyPage';
+import { ShellyMonitorPage } from './pages/ShellyMonitorPage';
 
 export default function App() {
   const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined;
@@ -22,6 +24,8 @@ export default function App() {
             <Route path="/log" element={<LogsPage />} />
             <Route path="/errori" element={<ErrorLogsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/shelly" element={<ShellyPage />} />
+            <Route path="/shelly/monitor" element={<ShellyMonitorPage />} />
             <Route path="*" element={<Navigate to="/stato" replace />} />
           </Routes>
         </AppLayout>

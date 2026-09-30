@@ -378,6 +378,54 @@ Se nessun parametro viene passato, il servizio restituisce i log del **giorno co
 
 Se nessun parametro viene passato, il servizio restituisce gli errori del **giorno corrente** in UTC. Se viene passato solo `da`, il limite superiore è la fine del giorno corrente.
 
+### 7.5 Dispositivi Shelly
+
+Il sistema integra i **dispositivi Shelly** della rete locale (relay, power monitor e relè con power meter), configurati nel file `shelly.json` (letto all'avvio, creato automaticamente se assente). Gli endpoint shelly richiedono come tutti gli altri l'header `X-API-Key` e **funzionano allo stesso modo anche con il profilo `mock`**: vengono sempre interrogati i dispositivi reali ai loro IP, mentre il profilo mock simula solo sensore e relay del termostato.
+
+Lo stato di un dispositivo è letto **in tempo reale** a ogni richiesta: il backend non registra né espone uno storico delle misure. Il refresh periodico è responsabilità del client.
+
+| Metodo | Endpoint | Descrizione |
+|---|---|---|
+| `GET` | `/shelly/dispositivi` | Restituisce l'elenco dei dispositivi configurati (id, nome, ip, tipo `RELAY`/`PM`/`PM_RELAY`, modello, generazione) |
+| `GET` | `/shelly/stato/{id}` | Stato completo del dispositivo in tempo reale: relè (se presente) e misure elettriche (se presenti) |
+| `GET` | `/shelly/relay/{id}` | Stato corrente del solo relè di un dispositivo con relè (lettura live dal dispositivo) |
+| `POST` | `/shelly/relay/{id}/on` | Accende il relè e restituisce lo stato riletto con l'esito esplicito del comando |
+| `POST` | `/shelly/relay/{id}/off` | Spegne il relè e restituisce lo stato riletto con l'esito esplicito del comando |
+
+I tipi di dispositivo sono tre: `RELAY` (solo relè), `PM` (solo power monitor) e
+`PM_RELAY` (relè **e** power meter, cioè gli Shelly 1PM). I campi di
+`GET /shelly/stato/{id}` sono sempre presenti e valgono `null` quando non
+applicabili al tipo del dispositivo:
+
+| Campo | Tipo | `RELAY` | `PM` | `PM_RELAY` |
+|---|---|---|---|---|
+| `acceso` | boolean | valore | `null` | valore |
+| `potenza_w` | number | `null` | valore | valore |
+| `tensione_v` | number | `null` | valore | valore |
+| `corrente_a` | number | `null` | valore | valore |
+
+Le misure sono `null` anche quando il dispositivo è irraggiungibile o ha
+restituito una lettura non interpretabile: il client non deve renderle come `0`.
+
+I comandi `POST /shelly/relay/{id}/on|off` restituiscono, oltre allo stato
+riletto (`acceso`), due campi di conferma additivi:
+- `esito` — `true` se il dispositivo ha **confermato l'esecuzione** del comando (risposta `Switch.Set` ricevuta); su `GET /shelly/relay/{id}` è `null`;
+- `stato_precedente` — stato del relay **prima** del comando (equivalente di `was_on` nella API RPC Shelly); valorizzato per i dispositivi **Gen 3** (es. `terrazzo`), `null` per i **Gen 1** (es. `portone`) e su `GET`.
+
+Questi campi permettono al client di distinguere "comando eseguito" (`esito`)
+da "stato attuale" (`acceso`): in particolare, per i device con auto-spegnimento
+hardware (`portone`, `cancello`, che si spengono da soli dopo 1 s), `esito: true`
+con `acceso: false` è un **successo**, non un errore.
+
+Campi di ogni misura di consumo: `id`, `data_ora` (UTC), `device_id`, `potenza_w` (nullable), `tensione_v` (nullable), `corrente_a` (nullable).
+
+Codici di errore aggiunti:
+- `400` — tipo non compatibile per l'operazione (comando o lettura del relè su un `PM`, che non ne ha);
+- `404` — id dispositivo non riconosciuto;
+- `500` — dispositivo irraggiungibile o risposta non interpretabile.
+
+Non esistono persistenza delle misure, scheduler di polling dedicato, né i relativi parametri di configurazione (`intervallo-polling-consumi-secondi`, `retention-consumi-giorni`, `logging-pm-abilitato`): sono rimossi da `GET /config` e rifiutati da `PUT /config`.
+
 ---
 
 ## 8. Logica di controllo
@@ -459,6 +507,14 @@ Lo stato corrente della caldaia utilizzato nella logica di isteresi (zona neutra
 | RF-46 | La configurazione espone `fuso_orario`, un identificatore IANA usato per interpretare giorno e ora degli intervalli del calendario; il default è `Europe/Rome` |
 | RF-47 | Quando `ora_legale = true`, il sistema applica automaticamente le regole DST del fuso configurato; quando è `false`, usa l'offset standard del fuso |
 | RF-48 | La forzatura può avere una fine opzionale `override_fine` (data-ora in orario civile locale, stesso fuso/DST del calendario): alla scadenza il sistema disattiva automaticamente la forzatura, persiste la configurazione (`override_attivo` torna `false`) e invia una notifica informativa; un `override_fine` già trascorso è rifiutato con HTTP 400 al `PUT /config` |
+| RF-49 | I dispositivi Shelly sono configurati in un file JSON (`shelly.json`) separato dal calendario, letto all'avvio e creato automaticamente se assente |
+| RF-50 | Ogni dispositivo Shelly ha id, nome, ip, tipo (`RELAY`, `PM` o `PM_RELAY`), modello e generazione |
+| RF-51 | L'applicazione espone `GET /shelly/dispositivi` che restituisce l'elenco dei dispositivi configurati con i loro metadati |
+| RF-52 | L'applicazione espone `GET /shelly/stato/{id}` che legge in tempo reale dal dispositivo il relè (se presente) e le misure elettriche (se presenti), restituendo `null` per i campi non applicabili al tipo |
+| RF-53 | L'applicazione espone `GET /shelly/relay/{id}` che legge lo stato corrente (acceso/spento) direttamente dal dispositivo |
+| RF-54 | L'applicazione espone `POST /shelly/relay/{id}/on` e `POST /shelly/relay/{id}/off` che comandano il relè di un dispositivo `RELAY` o `PM_RELAY` e restituiscono lo stato riletto con la conferma esplicita dell'esecuzione: `esito` (true = dispositivo ha confermato il comando) e `stato_precedente` (stato prima del comando, valorizzato per i Gen 3, `null` per i Gen 1) |
+| RF-55 | Il backend non registra le misure dei dispositivi Shelly: non esistono storico, scheduler di polling, retention né i corrispondenti parametri di configurazione |
+| RF-56 | Gli endpoint `/shelly/*` funzionano identicamente anche nel profilo mock: solo sensore di temperatura/umidità e relay del termostato sono simulati, i dispositivi Shelly restano reali e protetti da `X-API-Key` |
 
 ---
 

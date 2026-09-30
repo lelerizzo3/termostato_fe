@@ -5,6 +5,9 @@ import type {
   ErrorLogRecord,
   HealthResponse,
   PollingLogRecord,
+  ShellyDevice,
+  ShellyRelayStato,
+  ShellyStato,
   SystemConfiguration
 } from './types';
 
@@ -57,4 +60,17 @@ export function getErrorLogs(range?: DateRange): Promise<ErrorLogRecord[]> {
 
 export function getHealth(): Promise<HealthResponse> {
   return apiRequest<HealthResponse>('/actuator/health');
+}
+
+export function getShellyDevices(): Promise<ShellyDevice[]> {
+  return apiRequest<ShellyDevice[]>('/shelly/dispositivi');
+}
+
+export function setShellyRelay(id: string, on: boolean): Promise<ShellyRelayStato> {
+  const action = on ? 'on' : 'off';
+  return apiRequest<ShellyRelayStato>(`/shelly/relay/${encodeURIComponent(id)}/${action}`, { method: 'POST' });
+}
+
+export function getShellyStato(id: string): Promise<ShellyStato> {
+  return apiRequest<ShellyStato>(`/shelly/stato/${encodeURIComponent(id)}`);
 }

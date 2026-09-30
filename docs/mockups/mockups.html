@@ -53,6 +53,19 @@
   .tab{flex:1; text-align:center; padding:10px 0 16px; color:var(--muted); font-size:11px;}
   .tab .ic{font-size:20px; display:block; margin-bottom:2px;}
   .tab.active{color:var(--accent);}
+  .seg{display:flex;gap:6px;padding:8px 14px 10px;border-bottom:1px solid var(--line);}
+  .seg-btn{flex:1;border-radius:10px;border:none;padding:9px 0;font:inherit;font-size:12px;font-weight:600;background:var(--card2);color:var(--muted);}
+  .seg-btn.active{background:var(--accent);color:#fff;}
+  .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;}
+  .kpi .box{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 2px;}
+  .kpi .k-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+  .kpi .k-val{font-size:13px;font-weight:700;color:var(--txt);margin-top:3px;}
+  .link{color:var(--accent2);font-size:13px;font-weight:600;text-decoration:none;}
+  .note{border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.08);border-radius:12px;padding:8px 12px;font-size:12px;color:#bae6fd;}
+  .note.ok{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:#a7f3d0;}
+  .badge-shell{font-size:10px;padding:2px 7px;border-radius:6px;background:var(--card2);color:var(--muted);border:1px solid var(--line);font-weight:600;}
+  .badge-on{background:rgba(34,197,94,.15);color:var(--on);}
+  .badge-off{background:rgba(100,116,139,.2);color:var(--muted);}
   .big{font-size:44px;font-weight:700;color:var(--txt);line-height:1;}
   .unit{font-size:20px;color:var(--muted);font-weight:500;}
   .sub{color:var(--muted);font-size:13px;}
@@ -83,6 +96,7 @@
     <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
     <div class="screen">
       <div class="appbar"><h1>Configurazione</h1><span class="health"><span class="dot up"></span>Backend UP</span></div>
+      <div class="seg"><button class="seg-btn active">🏠 Termostato</button><button class="seg-btn">💡 Dispositivi</button></div>
       <div class="content">
         <div class="card">
           <h2>Regolazione</h2>
@@ -145,6 +159,7 @@
     <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
     <div class="screen">
       <div class="appbar"><h1>Calendario</h1><span class="health"><span class="badge">ora locale</span></span></div>
+      <div class="seg"><button class="seg-btn active">🏠 Termostato</button><button class="seg-btn">💡 Dispositivi</button></div>
       <div class="content">
         <!-- giorno espanso -->
         <div class="card" style="border-color:var(--accent)">
@@ -212,6 +227,7 @@
     <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
     <div class="screen">
       <div class="appbar"><h1>Log polling</h1><span class="health"><span class="dot up"></span></span></div>
+      <div class="seg"><button class="seg-btn active">🏠 Termostato</button><button class="seg-btn">💡 Dispositivi</button></div>
       <div class="content">
         <div class="card">
           <div class="row" style="padding-top:0"><span class="label">Da</span><span class="input">04/09</span><span class="label">A</span><span class="input">04/09</span></div>
@@ -274,6 +290,7 @@
     <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
     <div class="screen">
       <div class="appbar"><h1>Log errori</h1><span class="health"><span class="dot up"></span></span></div>
+      <div class="seg"><button class="seg-btn active">🏠 Termostato</button><button class="seg-btn">💡 Dispositivi</button></div>
       <div class="content">
         <div class="card">
           <div class="row" style="padding-top:0"><span class="label">Da</span><span class="input">04/09</span><span class="label">A</span><span class="input">04/09</span></div>
@@ -310,6 +327,7 @@
     <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
     <div class="screen">
       <div class="appbar"><h1>Impostazioni</h1><span class="health"><span class="dot up"></span></span></div>
+      <div class="seg"><button class="seg-btn active">🏠 Termostato</button><button class="seg-btn">💡 Dispositivi</button></div>
       <div class="content">
         <div class="card">
           <h2>API-key</h2>
@@ -353,6 +371,7 @@
     <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
     <div class="screen">
       <div class="appbar"><h1>Termostato</h1></div>
+      <div class="seg"><button class="seg-btn active">🏠 Termostato</button><button class="seg-btn">💡 Dispositivi</button></div>
       <div class="content" style="justify-content:center">
         <div class="modal">
           <div class="lock">🔒</div>
@@ -375,6 +394,7 @@
     <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
     <div class="screen">
       <div class="appbar"><h1>Dettaglio log</h1><span class="health"><span class="badge">◂ grafico</span></span></div>
+      <div class="seg"><button class="seg-btn active">🏠 Termostato</button><button class="seg-btn">💡 Dispositivi</button></div>
       <div class="content" style="padding:12px">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 8px">
           <span class="sub">04/09 · 1440 record (1/min)</span>
@@ -417,6 +437,7 @@
     <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
     <div class="screen">
       <div class="appbar"><h1>Stato</h1><span class="health"><span class="dot up"></span>Backend UP</span></div>
+      <div class="seg"><button class="seg-btn active">🏠 Termostato</button><button class="seg-btn">💡 Dispositivi</button></div>
       <div class="content">
         <div class="card" style="border-color:var(--accent);text-align:center;padding:16px">
           <h2>Misure interne</h2>
@@ -466,6 +487,193 @@
   <div class="caption">8 — Stato corrente</div>
   </div>
 
+  <!-- 9. AREA DISPOSITIVI -->
+  <div class="wrap">
+  <div class="phone" id="s-shelly">
+    <div class="notch"></div>
+    <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
+    <div class="screen">
+      <div class="appbar"><h1>Dispositivi Shelly</h1><span class="health"><span class="dot up"></span></span></div>
+      <div class="seg"><button class="seg-btn">🏠 Termostato</button><button class="seg-btn active">💡 Dispositivi</button></div>
+      <div class="content">
+        <div class="note">I dispositivi Shelly vengono sempre interrogati ai loro IP reali: con il profilo mock restano simulati solo sensore e relay del termostato. Lo stato è letto in tempo reale, senza storico.</div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span class="sub">10 dispositivi configurati</span>
+          <button class="btn sec" style="width:auto;padding:7px 12px;font-size:13px">↻ Aggiorna</button>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h2 style="margin:0">Relay comandabili</h2>
+            <span class="badge-shell">4</span>
+          </div>
+          <div class="row">
+            <div>
+              <div class="val" style="font-size:15px">Portone</div>
+              <div class="sub">SHSW-1 · gen. 1 · 192.168.1.2</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="pill off">SPENTO</span>
+              <button class="btn" style="width:auto;padding:7px 16px;font-size:13px">Accendi</button>
+            </div>
+          </div>
+          <div class="note ok" style="margin-top:8px">Comando eseguito · il Portone si spegne da solo dopo 1 s (esito confermato, stato riletto spento)</div>
+          <div class="row">
+            <div>
+              <div class="val" style="font-size:15px">Cancello</div>
+              <div class="sub">S3SW-001X8EU · gen. 3 · 192.168.1.3</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="pill on">ACCESO</span>
+              <button class="btn sec" style="width:auto;padding:7px 16px;font-size:13px">Spegni</button>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <div class="val" style="font-size:15px">Terrazzo</div>
+              <div class="sub">S3SW-001X8EU · gen. 3 · 192.168.1.10</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="pill on">ACCESO</span>
+              <button class="btn sec" style="width:auto;padding:7px 16px;font-size:13px">Spegni</button>
+            </div>
+          </div>
+          <div class="note ok" style="margin-top:8px">Comando eseguito · da spento ad acceso</div>
+          <div class="row" style="align-items:flex-start">
+            <div style="width:100%">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div class="val" style="font-size:15px">Shelly 1PM</div>
+                  <div class="sub">SHSW-PM · gen. 1 · 192.168.1.20</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="badge-shell">PM_RELAY</span>
+                  <span class="pill on">ACCESO</span>
+                  <button class="btn sec" style="width:auto;padding:7px 16px;font-size:13px">Spegni</button>
+                </div>
+              </div>
+              <div class="kpi" style="margin-top:12px">
+                <div class="box"><div class="k-label">Potenza</div><div class="k-val">45.2 W</div></div>
+                <div class="box"><div class="k-label">Tensione</div><div class="k-val">229.8 V</div></div>
+                <div class="box"><div class="k-label">Corrente</div><div class="k-val">0.20 A</div></div>
+              </div>
+              <div class="hint">Relè e misure dallo stesso dispositivo: entrambi i dati vengono da GET /shelly/stato/{id}.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h2 style="margin:0">Power monitor</h2>
+            <span class="badge-shell">6</span>
+          </div>
+          <div class="row" style="align-items:flex-start">
+            <div style="width:100%">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div class="val" style="font-size:15px">Frigo e Forno</div>
+                  <div class="sub">SNPM-001PCEU16 · gen. 3 · 192.168.1.9</div>
+                </div>
+                <span class="badge-shell">PM</span>
+              </div>
+              <div class="kpi" style="margin-top:12px">
+                <div class="box"><div class="k-label">Potenza</div><div class="k-val">45.2 W</div></div>
+                <div class="box"><div class="k-label">Tensione</div><div class="k-val">229.8 V</div></div>
+                <div class="box"><div class="k-label">Corrente</div><div class="k-val">0.20 A</div></div>
+              </div>
+              <div class="hint">Misura letta dal dispositivo in tempo reale, senza storico.</div>
+            </div>
+          </div>
+          <div class="row" style="align-items:flex-start">
+            <div style="width:100%">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div class="val" style="font-size:15px">Lavastoviglie e Cappa</div>
+                  <div class="sub">SNPM-001PCEU16 · gen. 3 · 192.168.1.12</div>
+                </div>
+                <span class="badge-shell">PM</span>
+              </div>
+              <div class="kpi" style="margin-top:12px">
+                <div class="box"><div class="k-label">Potenza</div><div class="k-val">—</div></div>
+                <div class="box"><div class="k-label">Tensione</div><div class="k-val">—</div></div>
+                <div class="box"><div class="k-label">Corrente</div><div class="k-val">—</div></div>
+              </div>
+              <div class="hint">Misura non disponibile: il backend restituisce null, non 0.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tab active"><span class="ic">💡</span>Dispositivi</div>
+        <div class="tab"><span class="ic">📊</span>Monitor</div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">9 — Area Dispositivi · Shelly (relay comandabili + power monitor)</div>
+  </div>
+
+  <!-- 10. AREA DISPOSITIVI: MONITOR -->
+  <div class="wrap">
+  <div class="phone" id="s-monitor">
+    <div class="notch"></div>
+    <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
+    <div class="screen">
+      <div class="appbar"><h1>Monitor consumi</h1><span class="health"><span class="dot up"></span></span></div>
+      <div class="seg"><button class="seg-btn">🏠 Termostato</button><button class="seg-btn active">💡 Dispositivi</button></div>
+      <div class="content">
+        <div class="note">Monitor del consumo istantaneo dei dispositivi con power meter (PM e Shelly 1PM): somma delle ultime letture, con colore che cambia in base alla potenza totale. Le misure non vengono registrate.</div>
+        <div class="card">
+          <h2>Aggiornamento</h2>
+          <div style="display:flex;align-items:flex-end;gap:10px">
+            <div style="flex:1">
+              <div class="label">Aggiorna ogni</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <input class="input" style="min-width:0;flex:1;text-align:left" value="5">
+                <span class="sub">secondi</span>
+              </div>
+            </div>
+            <button class="btn sec" style="width:auto;padding:11px 18px;font-size:14px">Applica</button>
+          </div>
+          <div class="hint">Intervallo di rilettura del consumo istantaneo (solo frontend, nessuna modifica alla config).</div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between">
+            <div>
+              <h2 style="margin:0">Totale consumo istantaneo</h2>
+              <div class="sub" style="margin-top:4px">Somma delle ultime misure dei 7 dispositivi con power meter · <b>5 s · aggiorna</b></div>
+            </div>
+          </div>
+          <div style="margin-top:12px;text-align:center;padding:14px 0;background:var(--card2);border:1px solid var(--line);border-radius:16px">
+            <span class="big" style="color:#ef4444">2844.0</span>
+            <span class="sub" style="display:block;margin-top:4px">watt totali</span>
+          </div>
+          <div class="hint" style="text-align:right;margin-top:8px">ultimo aggiornamento 20/09/2026, 17:00:05</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;font-size:11px;color:var(--muted)">
+            <span><span style="color:#22c55e">●</span> &lt; 100 W</span>
+            <span>▬</span>
+            <span><span style="color:#f59e0b">●</span> verso arancione</span>
+            <span>▬</span>
+            <span><span style="color:#ef4444">●</span> ≥ 2000 W</span>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between">
+            <h2 style="margin:0">Dettaglio per dispositivo</h2>
+            <span class="badge-shell">7 con misure</span>
+          </div>
+          <div style="margin-top:12px">
+            <svg id="monitor-bars" width="100%" height="150" viewBox="0 0 320 150"></svg>
+          </div>
+          <div class="kpi" style="grid-template-columns:1fr;margin-top:10px" id="monitor-list"></div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tab"><span class="ic">💡</span>Dispositivi</div>
+        <div class="tab active"><span class="ic">📊</span>Monitor</div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">10 — Area Dispositivi · Monitor (consumo istantaneo)</div>
+  </div>
+
 </div>
 <script>
 // Genera righe minuto-per-minuto (decrescente da 10:29)
@@ -495,6 +703,65 @@
       `</tr>`);
     m--; if(m<0){m=59;h--;}
   }
+})();
+</script>
+<script>
+// Genera le barre del monitor del consumo istantaneo dei dispositivi con power meter
+(function(){
+  const s = document.getElementById('monitor-bars');
+  const list = document.getElementById('monitor-list');
+  if(!s || !list) return;
+  // w = potenza in watt (null = misura non disponibile), v = tensione, a = corrente
+  const pm = [
+    {name:'Frigo e Forno', w:45, v:229.8, a:0.197},
+    {name:'Top Cucina', w:320, v:230.4, a:1.39},
+    {name:'Lavanderia', w:7, v:230.2, a:0.03},
+    {name:'Shelly 1PM', w:180, v:229.8, a:0.78},
+    {name:'Modem', w:12, v:231.0, a:0.05},
+    {name:'Tv Cucina', w:180, v:229.5, a:0.78},
+    {name:'Lavastoviglie e Cappa', w:2100, v:230.1, a:9.13}
+  ];
+  const MAX = 2000, base = 130, maxH = 110, x0 = 6, step = 42, barW = 26;
+  function color(w){
+    if(w == null) return '#334155';
+    if(w <= 100) return '#22c55e';
+    if(w >= 2000) return '#ef4444';
+    const t = (w-100)/1900;
+    const h = Math.round(120 - 120*t);
+    return 'hsl('+h+', 85%, 50%)';
+  }
+  function num(v, digits){
+    return v == null ? '\u2014' : v.toFixed(digits);
+  }
+  let html = '<line x1="10" y1="'+base+'" x2="312" y2="'+base+'" stroke="#334155" stroke-width="1"/>' +
+             '<line x1="10" y1="'+(base-55)+'" x2="312" y2="'+(base-55)+'" stroke="#334155" stroke-width="1" stroke-dasharray="3 3"/>';
+  let listHtml = '';
+  pm.forEach(function(p, i){
+    const h = p.w == null ? 0 : Math.min(p.w, MAX)/MAX*maxH;
+    const x = x0 + i*step;
+    const y = base - h;
+    const c = color(p.w);
+    if(h > 0){
+      html += '<rect x="'+x+'" y="'+y.toFixed(1)+'" width="'+barW+'" height="'+h.toFixed(1)+'" rx="5" fill="'+c+'"/>';
+    } else {
+      html += '<rect x="'+x+'" y="'+(base-1)+'" width="'+barW+'" height="2" rx="1" fill="'+c+'"/>';
+    }
+    const label = p.w == null ? '\u2014' : Math.round(p.w)+'W';
+    html += '<text x="'+(x+barW/2)+'" y="'+(y-4)+'" fill="'+(p.w>=2000 ? '#ef4444' : '#94a3b8')+'" font-size="9" text-anchor="middle">'+label+'</text>';
+    html += '<text x="'+(x+barW/2)+'" y="'+(base+14)+'" fill="#94a3b8" font-size="9" text-anchor="middle">'+p.name.split(' ')[0]+'</text>';
+    listHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+      '<span style="display:flex;align-items:center;gap:6px;min-width:0">' +
+        '<span style="width:9px;height:9px;border-radius:50%;background:'+c+';display:inline-block;flex:none"></span>' +
+        '<span style="min-width:0">' +
+          '<span style="display:block;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.name+'</span>' +
+          '<span style="display:block;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+num(p.v,1)+' V \u00b7 '+num(p.a,2)+' A</span>' +
+        '</span>' +
+      '</span>' +
+      '<span style="color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;flex:none">'+num(p.w,1)+' W</span>' +
+    '</div>';
+  });
+  s.innerHTML = html;
+  list.innerHTML = listHtml;
 })();
 </script>
 </body>

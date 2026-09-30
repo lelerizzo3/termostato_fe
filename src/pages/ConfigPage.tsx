@@ -116,6 +116,7 @@ export function ConfigPage() {
         <h2 className="section-title">Regolazione</h2>
         <NumberField label="Soglia attivazione (°C)" step="0.1" registration={form.register('soglia_attivazione')} error={form.formState.errors.soglia_attivazione?.message} />
         <NumberField label="Intervallo polling (secondi)" step="1" registration={form.register('intervallo_polling_secondi')} error={form.formState.errors.intervallo_polling_secondi?.message} />
+        <p className="mt-2 text-xs leading-5 text-slate-400">Ogni quanti secondi il backend interroga il sensore e decide l'accensione della caldaia. Le misure dei dispositivi Shelly non vengono registrate: sono lette in tempo reale dall'app.</p>
       </section>
 
       <section className="app-card">

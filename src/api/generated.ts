@@ -215,6 +215,137 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shelly/dispositivi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lista di tutti i dispositivi Shelly configurati
+         * @description Restituisce la lista completa dei dispositivi con i loro metadati
+         *     (id, nome, ip, tipo, modello, generazione). Utile al frontend per
+         *     costruire la UI dinamicamente senza hardcodare gli id.
+         *     I dispositivi sono letti dal file `shelly.json` al primo avvio.
+         *
+         */
+        get: operations["getShellyDispositivi"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shelly/relay/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Legge lo stato corrente di un relay Shelly
+         * @description Interroga in tempo reale il dispositivo fisico e restituisce lo stato
+         *     con i metadati del device. Il dispositivo deve essere di tipo `RELAY` o
+         *     `PM_RELAY`. Per uno stato completo (relè più misure elettriche)
+         *     usare `GET /shelly/stato/{id}`.
+         *
+         */
+        get: operations["getShellyRelayStato"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shelly/relay/{id}/on": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accende il relay di un dispositivo Shelly
+         * @description Invia il comando di accensione al dispositivo fisico, poi rilegge lo
+         *     stato e lo restituisce insieme all'esito esplicito del comando
+         *     (`esito`) e allo stato precedente (`stato_precedente`). Il dispositivo
+         *     deve essere di tipo `RELAY` o `PM_RELAY`; per i `PM` la risposta è `400`.
+         *
+         *     Nota: i dispositivi Portone e Cancello sono configurati con
+         *     autospegnimento hardware dopo 1 secondo. Il backend non gestisce
+         *     questa logica; lo stato restituito è quello immediatamente successivo
+         *     al comando. Non usare `acceso` per valutare l'esito: verifica `esito`.
+         *
+         */
+        post: operations["accendiShellyRelay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shelly/relay/{id}/off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Spegne il relay di un dispositivo Shelly
+         * @description Invia il comando di spegnimento al dispositivo fisico, poi rilegge lo
+         *     stato e lo restituisce insieme all'esito esplicito del comando
+         *     (`esito`) e allo stato precedente (`stato_precedente`). Il dispositivo
+         *     deve essere di tipo `RELAY` o `PM_RELAY`; per i `PM` la risposta è `400`.
+         *
+         */
+        post: operations["spegniShellyRelay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shelly/stato/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Legge in tempo reale lo stato completo di un dispositivo Shelly
+         * @description Interroga il dispositivo fisico e restituisce lo stato completo: il
+         *     relè se il tipo ne è dotato, le misure elettriche se il tipo ne è dotato,
+         *     entrambe per gli Shelly 1PM (`PM_RELAY`). Non esiste persistenza: ogni
+         *     chiamata legge il dispositivo, quindi l'aggiornamento periodico è
+         *     responsabilità del client.
+         *
+         *     I campi sono sempre presenti; quelli non applicabili al tipo valgono
+         *     `null` (`acceso` per `PM`, `potenza_w`/`tensione_v`/`corrente_a` per
+         *     `RELAY`). I valori misurati sono `null` anche quando il dispositivo ha
+         *     restituito una lettura non interpretabile: non vanno resi come `0`.
+         *
+         */
+        get: operations["getShellyStato"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/temperature": {
         parameters: {
             query?: never;
@@ -409,7 +540,11 @@ export interface components {
              */
             ora_legale: boolean;
             /**
-             * @description Abilita le notifiche degli errori tramite ntfy.
+             * @description Abilita le notifiche degli errori tramite ntfy. Gli errori di lettura
+             *     meteo esterno (`READ_WEATHER`) non generano notifiche ntfy
+             *     indipendentemente da questo flag: si tratta di un servizio terzo
+             *     informativo e la sua irraggiungibilità non deve produrre rumore.
+             *
              * @default true
              * @example true
              */
@@ -600,7 +735,11 @@ export interface components {
              */
             data_ora: string;
             /**
-             * @description Categoria tecnica dell'errore.
+             * @description Categoria tecnica dell'errore. Valori possibili:
+             *     `READ_TEMP` (sensore temperatura), `READ_WEATHER` (meteo esterno — non genera ntfy),
+             *     `READ_RELAY` (lettura relay), `TURN_ON` (accensione caldaia),
+             *     `TURN_OFF` (spegnimento caldaia).
+             *
              * @example READ_TEMP
              */
             tipo_errore: string;
@@ -620,6 +759,133 @@ export interface components {
              * @example 1
              */
             num_errori_consecutivi: number;
+        };
+        /**
+         * @description Tipo di dispositivo Shelly. `RELAY` = solo relè; `PM` = solo power
+         *     monitor; `PM_RELAY` = relè e power meter (Shelly 1PM).
+         *
+         * @example RELAY
+         * @enum {string}
+         */
+        ShellyTipo: "RELAY" | "PM" | "PM_RELAY";
+        /** @description Metadati di un dispositivo Shelly, senza stato live. */
+        ShellyDeviceResponse: {
+            /**
+             * @description Identificatore univoco del dispositivo.
+             * @example portone
+             */
+            id: string;
+            /**
+             * @description Nome descrittivo del dispositivo.
+             * @example Portone
+             */
+            nome: string;
+            /**
+             * @description Indirizzo IP del dispositivo nella rete locale.
+             * @example 192.168.1.2
+             */
+            ip: string;
+            tipo: components["schemas"]["ShellyTipo"];
+            /**
+             * @description Codice modello del dispositivo Shelly.
+             * @example SHSW-1
+             */
+            modello: string;
+            /**
+             * Format: int32
+             * @description Generazione hardware del dispositivo (1 o 3).
+             * @example 1
+             * @enum {integer}
+             */
+            generazione: 1 | 3;
+        };
+        /** @description Stato corrente di un relay Shelly con metadati del dispositivo. */
+        ShellyRelayStatoResponse: {
+            /** @example portone */
+            id: string;
+            /** @example Portone */
+            nome: string;
+            /** @example 192.168.1.2 */
+            ip: string;
+            /** @example SHSW-1 */
+            modello: string;
+            /**
+             * Format: int32
+             * @example 1
+             * @enum {integer}
+             */
+            generazione: 1 | 3;
+            tipo: components["schemas"]["ShellyTipo"];
+            /**
+             * @description Stato corrente del relay, letto direttamente dal dispositivo.
+             * @example false
+             */
+            acceso: boolean;
+            /**
+             * @description Esito esplicito del comando: `true` se il dispositivo ha confermato
+             *     l'esecuzione (risposta `Switch.Set` ricevuta). Presente solo nelle
+             *     risposte a `POST /shelly/relay/{id}/on|off`; `null` su
+             *     `GET /shelly/relay/{id}`.
+             *
+             * @example true
+             */
+            esito?: boolean | null;
+            /**
+             * @description Stato del relay prima del comando (equivalente di `was_on` della API
+             *     RPC Shelly). Valorizzato per i dispositivi Gen 3 (es. `terrazzo`);
+             *     `null` per i Gen 1 (es. `portone`) e su `GET /shelly/relay/{id}`.
+             *
+             * @example false
+             */
+            stato_precedente?: boolean | null;
+        };
+        /** @description Stato in tempo reale di un dispositivo Shelly con i suoi metadati.
+         *     I campi sono sempre presenti; quelli non applicabili al tipo del
+         *     dispositivo valgono `null`.
+         *      */
+        ShellyStatoResponse: {
+            /** @example shelly1pm */
+            id: string;
+            /** @example Shelly 1PM */
+            nome: string;
+            /** @example 192.168.1.20 */
+            ip: string;
+            /** @example SHSW-PM */
+            modello: string;
+            /**
+             * Format: int32
+             * @example 1
+             * @enum {integer}
+             */
+            generazione: 1 | 3;
+            tipo: components["schemas"]["ShellyTipo"];
+            /**
+             * @description Stato del relè letto dal dispositivo; `null` per i tipi senza
+             *     relè (`PM`).
+             *
+             * @example true
+             */
+            acceso: boolean | null;
+            /**
+             * Format: double
+             * @description Potenza istantanea in Watt; `null` per i tipi senza power meter
+             *     (`RELAY`) o quando la misura non è disponibile.
+             *
+             * @example 45.2
+             */
+            potenza_w: number | null;
+            /**
+             * Format: double
+             * @description Tensione in Volt; `null` se non applicabile o non letta.
+             * @example 229.8
+             */
+            tensione_v: number | null;
+            /**
+             * Format: double
+             * @description Corrente in Ampere; `null` se non applicabile o non letta.
+             * @example 0.197
+             */
+            corrente_a: number | null;
         };
         ApiError: {
             /**
@@ -683,6 +949,15 @@ export interface components {
         };
     };
     responses: {
+        /** @description Risorsa non trovata */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiError"];
+            };
+        };
         /** @description API-key assente, vuota o non autorizzata */
         Unauthorized: {
             headers: {
@@ -724,6 +999,11 @@ export interface components {
          * @example 2026-09-04
          */
         ToDate: string;
+        /**
+         * @description Identificatore del dispositivo Shelly (es. `portone`, `frigo-e-forno`).
+         * @example portone
+         */
+        ShellyDeviceId: string;
     };
     requestBodies: never;
     headers: never;
@@ -1097,6 +1377,171 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    getShellyDispositivi: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lista dispositivi */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShellyDeviceResponse"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getShellyRelayStato: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identificatore del dispositivo Shelly (es. `portone`, `frigo-e-forno`).
+                 * @example portone
+                 */
+                id: components["parameters"]["ShellyDeviceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stato del relay con metadati dispositivo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShellyRelayStatoResponse"];
+                };
+            };
+            /** @description Il dispositivo esiste ma è di tipo PM, non RELAY */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    accendiShellyRelay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identificatore del dispositivo Shelly (es. `portone`, `frigo-e-forno`).
+                 * @example portone
+                 */
+                id: components["parameters"]["ShellyDeviceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stato aggiornato del relay con metadati dispositivo ed esito */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShellyRelayStatoResponse"];
+                };
+            };
+            /** @description Il dispositivo esiste ma è di tipo PM, non RELAY */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    spegniShellyRelay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identificatore del dispositivo Shelly (es. `portone`, `frigo-e-forno`).
+                 * @example portone
+                 */
+                id: components["parameters"]["ShellyDeviceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stato aggiornato del relay con metadati dispositivo ed esito */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShellyRelayStatoResponse"];
+                };
+            };
+            /** @description Il dispositivo esiste ma è di tipo PM, non RELAY */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getShellyStato: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identificatore del dispositivo Shelly (es. `portone`, `frigo-e-forno`).
+                 * @example portone
+                 */
+                id: components["parameters"]["ShellyDeviceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stato del dispositivo con metadati */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShellyStatoResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalServerError"];
         };
     };
     getMockTemperature: {

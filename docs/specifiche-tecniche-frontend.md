@@ -16,11 +16,24 @@ Realizzare una **web-app mobile-first** che permetta di:
 4. Consultare i log di polling (`GET /log`) con filtro per range di date.
 5. Consultare i log di errore (`GET /log/errori`) con filtro per range di date.
 6. (Opzionale) Mostrare lo stato di salute del backend (`GET /actuator/health`).
+7. Gestire i **dispositivi Shelly** della rete locale (area dedicata
+   "Dispositivi"): visualizzare l'elenco dei dispositivi configurati
+   (`GET /shelly/dispositivi`), leggerne lo stato in tempo reale
+   (`GET /shelly/stato/{id}`) e comandare i relè
+   (`POST /shelly/relay/{id}/on|off`).
+8. Monitorare in **tempo reale** il consumo istantaneo dei dispositivi con power
+   meter dell'area Dispositivi (`GET /shelly/stato/{id}`): totale e grafico a
+   barre che cresce e cambia colore in base alla potenza (verde sotto i 100 W →
+   arancione → rosso) con un intervallo di aggiornamento configurabile in
+   secondi.
 
 L'ambito è **esclusivamente il frontend**. Il backend non viene modificato. Il
 consumo del contratto REST inbound è quello descritto in `openapi.yaml`; gli
 endpoint `mock/*`, `/temperature`, `/relay` non sono usati dal frontend (sono
-per lo scenario E2E lato backend).
+per lo scenario E2E lato backend). Gli **endpoint `/shelly/*` sono invece reali
+in ogni profilo backend** (incluso `mock`): solo il sensore e il relay del
+termostato vengono simulati dal profilo mock, i dispositivi Shelly vengono
+sempre interrogati ai loro IP di rete.
 
 ## 2. Vincoli di contesto
 
@@ -105,19 +118,14 @@ src/
   api/
     generated.ts           # tipi generati da openapi.yaml (openapi-typescript)
     client.ts              # wrapper fetch: base URL, header X-API-Key, gestione errori/401
-    state.ts               # funzione getCurrentState per GET /stato
-    config.ts              # funzioni getConfig / updateConfig
-    calendar.ts            # funzioni getCalendar / updateCalendar
-    logs.ts                # funzioni getPollingLogs / getErrorLogs
+    types.ts               # alias dei tipi generati usati dalle pagine
+    endpoints.ts           # funzioni endpoint: stato, config, calendario, log, health, shelly
   auth/
     apiKeyStore.ts         # lettura/scrittura/rimozione chiave in localStorage
     ApiKeyGate.tsx         # gate: mostra inserimento chiave se assente/non valida
     useApiKey.ts           # hook per accedere/aggiornare la chiave
   hooks/
-    useCurrentState.ts     # React Query hook per GET /stato e refresh
-    useConfig.ts           # React Query hooks
-    useCalendar.ts
-    useLogs.ts
+    useApi.ts              # React Query: queryKeys + hook per tutti gli endpoint
   pages/
     StatusPage.tsx         # dashboard stato corrente, route /stato
     ConfigPage.tsx
@@ -125,12 +133,16 @@ src/
     LogsPage.tsx
     ErrorLogsPage.tsx
     SettingsPage.tsx       # API-key + link alla configurazione sistema
+    ShellyPage.tsx         # area Dispositivi: elenco + comando relè, route /shelly
+    ShellyMonitorPage.tsx  # monitor consumo istantaneo, route /shelly/monitor
   components/
     forms/                 # campi form riutilizzabili (temperatura, orario, ecc.)
-    layout/                # header, bottom nav mobile, safe-area wrapper
-    common/                # spinner, toast, empty-state
+    layout/AppLayout.tsx   # header con selettore d'area + bottom nav per area
+    common/                # LoadingState/ErrorState/EmptyState/InlineNotice
   lib/
     datetime.ts            # parsing e formattazione dei timestamp locali
+    shelly.ts              # capacità dei tipi Shelly (relè, power meter) e formattazione misure
+    shellyMonitor.ts       # scala e colori del monitor di consumo istantaneo
     validation.ts          # schemi Zod allineati a OpenAPI
   styles/
 ```
@@ -140,13 +152,21 @@ src/
 - `api/client.ts` centralizza: base URL, header `X-API-Key` (vedi cap. 5),
   serializzazione JSON, parsing risposte, mappatura degli errori (`ApiError`,
   `UnauthorizedError`) in un formato uniforme per la UI.
-- `api/state.ts` espone `getCurrentState()`, che chiama `GET /stato` e restituisce
-  il tipo generato dalla risposta `200` dell'operazione `getCurrentState`.
+- `api/endpoints.ts` espone una funzione per ogni endpoint usato (es.
+  `getCurrentState()` per `GET /stato`, `getShellyStato(id)` per
+  `GET /shelly/stato/{id}`, `setShellyRelay(id, on)` per
+  `POST /shelly/relay/{id}/on|off`), ciascuna con il tipo generato dalla
+  risposta.
 - I tipi TypeScript sono **generati** da `openapi.yaml` così da restare allineati
-  al contratto (comando in `package.json`, es. `openapi-typescript openapi.yaml -o src/api/generated.ts`).
-- Ogni endpoint ha una funzione dedicata + un hook React Query per cache,
-  stato di caricamento e invalidazione dopo le `PUT`; `useCurrentState` gestisce
-  anche refresh manuale e polling non aggressivo dello stato corrente.
+  al contratto (`npm run generate:api` → `src/api/generated.ts`); `api/types.ts`
+  re-esporta i tipi rilevanti per le pagine.
+- `hooks/useApi.ts` concentra i **hook React Query** (cache, stato di
+  caricamento, invalidazione dopo le `PUT`) e i `queryKeys`. Lo stato corrente
+  gestisce refresh manuale e polling non aggressivo (60 s); lo stato dei
+  dispositivi Shelly (`useShellyStato`) si riaggiorna ogni 30 s nella pagina
+  Dispositivi e con l'intervallo scelto dall'utente nella pagina Monitor. Il
+  comando relè aggiorna la cache di `shellyStato` con `acceso` restituito dalla
+  risposta.
 
 ## 5. Sicurezza e gestione della API-key
 
@@ -224,11 +244,21 @@ All'avvio l'app applica un **gate sulla API-key** (`ApiKeyGate`): se non è
 presente una chiave in `localStorage`, mostra la schermata di inserimento chiave
 (vedi 6.7) prima di ogni altra funzionalità.
 
-Navigazione mobile con **bottom navigation** a 5 voci: **Stato**, Calendario,
-Log, Errori, Impostazioni. La configurazione completa resta disponibile nella
-route `/config`, raggiungibile dal pulsante "Configurazione sistema" della
-schermata Impostazioni (così la barra non viene sovraccaricata con una sesta
-voce). La schermata Stato è la destinazione iniziale dopo il gate.
+L'app è organizzata in **due aree**, selezionabili con un **selettore d'area
+nell'header** (tabs "🏠 Termostato" e "💡 Dispositivi"). L'area attiva è derivata
+dal pathname (`/shelly`… → area Dispositivi). La **bottom navigation cambia in
+base all'area**:
+
+- **Area Termostato** — 5 voci: **Stato** (`/stato`), Calendario (`/calendario`),
+  Log (`/log`), Errori (`/errori`), Impostaz. (`/settings`). La configurazione
+  completa resta disponibile nella route `/config`, raggiungibile dal pulsante
+  "Configurazione sistema" della schermata Impostazioni (così la barra non viene
+  sovraccaricata con una sesta voce). La schermata Stato è la destinazione
+  iniziale dopo il gate.
+- **Area Dispositivi** — 2 voci: **Dispositivi** (`/shelly`, pagina iniziale
+  dell'area con elenco e comando dei relè) e **Monitor**
+  (`/shelly/monitor`, consumo istantaneo). Non esistono pagine di storico dei
+  consumi: il backend non registra le misure.
 
 ### 6.1 Schermata Stato corrente (`/stato`)
 
@@ -300,6 +330,10 @@ voce). La schermata Stato è la destinazione iniziale dopo il gate.
     nel `PUT`). Mostrare nota "modificabile solo al riavvio".
 - La `PUT /config` richiede l'oggetto completo → il form deve reinviare **tutti**
   i campi letti, non solo quelli modificati (merge sullo stato caricato).
+- I campi del logging dei consumi Shelly (`intervallo_polling_consumi_secondi`,
+  `logging_pm_abilitato`, `retention_consumi_giorni`) **non esistono più** nel
+  contratto: non vanno mostrati nel form e non vanno inviati nella `PUT`, che li
+  rifiuterebbe.
 - Gestione `400` → mostrare `message` dell'`ApiError`.
 
 ### 6.3 Schermata Calendario (`/config/calendario`)
@@ -405,6 +439,129 @@ forma di **tabella compatta**.
   chiamata leggera (es. `GET /actuator/health` o `GET /stato`): se risponde
   `401`, la chiave è rifiutata e non viene salvata come valida.
 
+### 6.8 Area Dispositivi: profilo dati e struttura
+
+- Gli endpoint **`/shelly/*` sono sempre reali**, anche con profilo backend
+  `mock`: il mock simula solo sensore di temperatura/umidità e relay del
+  termostato; i dispositivi Shelly vengono letti dalla configurazione
+  `shelly.json` e interrogati ai loro IP di rete. Il frontend non conosce il
+  profilo attivo e non cambia comportamento.
+- L'elenco dei dispositivi arriva da `GET /shelly/dispositivi` e distingue tre
+  tipi (`ShellyTipo`), tradotti in capacità con gli helper `hasRelay(tipo)` e
+  `hasPowerMeter(tipo)` di `lib/shelly.ts`:
+  - **RELAY** — es. `portone`, `cancello`, `terrazzo`: solo relè comandabile;
+  - **PM** (power monitor) — es. `frigo-e-forno`, `top-cucina`, `lavanderia`,
+    `modem`, `tv-cucina`, `lavastoviglie-e-cappa`: solo misura di
+    potenza/tensione/corrente;
+  - **PM_RELAY** (Shelly 1PM, es. `shelly1pm`) — relè **e** misure: la stessa
+    card mostra badge ACCESO/SPENTO, pulsante di comando e le tre misure.
+- **Vista unica dello stato**: `GET /shelly/stato/{id}` restituisce sempre tutti
+  i campi (`acceso`, `potenza_w`, `tensione_v`, `corrente_a`) con `null` per
+  quelli non applicabili al tipo. Il frontend usa questo endpoint come unica
+  fonte di stato e **non** chiama `GET /shelly/relay/{id}`: non esiste uno
+  storico delle misure lato backend, quindi l'aggiornamento periodico è
+  responsabilità del frontend.
+- **I `null` non sono zeri**: una misura o uno stato `null` va reso con `—` (o con
+  uno stato "non disponibile"), mai con `0` né con `SPENTO`.
+- In caso di errore il frontend mostra il messaggio dell'`ApiError` (es. `404`
+  "Dispositivo Shelly non trovato", `400` per un comando su un `PM` senza
+  relè).
+
+### 6.9 Schermata Dispositivi Shelly (`/shelly`)
+
+- È la **destinazione iniziale dell'area Dispositivi** (voce "Dispositivi" della
+  bottom nav, raggiunta anche dal tab "💡 Dispositivi").
+- Carica l'elenco con `GET /shelly/dispositivi` (`useShellyDevices`) e mostra
+  due sezioni raggruppate: **Relay comandabili** (tipi con `hasRelay`, quindi
+  `RELAY` e `PM_RELAY`) e **Power monitor** (tipi senza relè, quindi `PM`).
+- **Card relay** (una per dispositivo con relè):
+  - nome, modello, generazione e IP dalla lista, con badge del tipo per i
+    `PM_RELAY`;
+  - lettura dello stato in tempo reale (`GET /shelly/stato/{id}` tramite
+    `useShellyStato`, refetch ogni 30 s) con badge **ACCESO/SPENTO**; se lo stato
+    è `null` o la lettura fallisce il badge diventa **—/ERRORE** e il comando
+    resta disabilitato, così non si commanda un relè su uno stato ignoto;
+  - pulsante **"Accendi"/"Spegni"** che invia
+    `POST /shelly/relay/{id}/on|off` (`useShellyRelayCommand`) e rifresca lo
+    stato dopo il comando. Pulsante disabilitato durante invio/lettura; stato
+    iniziale "SPENTO" se la lettura non è ancora disponibile.
+  - **Conferma esplicita dell'esito**: quando la risposta al comando ha
+    `esito === true`, la card mostra un riquadro di conferma **"Comando
+    eseguito"** (tone success, `role="status"`), **indipendentemente da
+    `acceso`** (valido anche se il relay era già nello stato richiesto o se è
+    un device con auto-spegnimento hardware come portone/cancello dove `acceso`
+    può restare/tornare `false`).
+  - **Transizione**: se `stato_precedente` è valorizzato, la conferma descrive
+    la transizione   `stato_precedente`→`acceso`: **"da spento ad acceso"**,
+    **"da acceso a spento"**, oppure **"era già acceso"**/**"era già spento"**
+    quando `stato_precedente === acceso`. Con `stato_precedente` `null` (Gen 1
+    e `GET`) la conferma resta basata sul solo `esito`.
+  - **Retrocompatibilità**: `esito`/`stato_precedente` sono opzionali (`null`
+    o assenti): la card non si rompe, la conferma compare comunque quando il
+    comando termina con successo (risposta 2xx) anche se il backend non invia
+    `esito`.
+  - **Mai `acceso` come esito**: `esito === true` con `acceso === false` è un
+    **successo**, non un errore. Nessun messaggio di errore in quel caso.
+  - **Errori non-2xx**: nessuna conferma di successo; viene mostrato il
+    `message` dell'`ApiError`. Su `401` il client reindirizza al gate
+    come per gli altri endpoint (cap. 5).
+  - **Rilettura stato**: dopo il comando la card rilegge `GET /shelly/stato/{id}`
+    subito e dopo ~3 s, così per i device auto-off il toggle riflette lo stato
+    reale senza contraddire la conferma già mostrata.
+  - **Misure per i `PM_RELAY`**: sotto badge e pulsante, stessa griglia a tre
+    colonne (Potenza, Tensione, Corrente) delle card power monitor, con `—` per
+    i valori `null`.
+- **Card power monitor** (una per dispositivo senza relè):
+  - nome, modello, generazione e IP dalla lista, con badge del tipo;
+  - **misura corrente** (`GET /shelly/stato/{id}`, refetch ogni 30 s):
+    Potenza (W), Tensione (V), Corrente (A); `—` per valori `null`;
+  - nota "Misura letta dal dispositivo in tempo reale, senza storico." e
+    **nessun comando di relè** (il backend risponderebbe `400`).
+- Pulsante **"↻ Aggiorna"** che rifresca l'elenco dispositivi (le singole card
+  si aggiornano con il loro polling). Stati di loading/errore/vuoto obbligatori
+  (vedi FE-NF-06), incluso lo stato "Nessun dispositivo Shelly configurato".
+
+### 6.10 Schermata Monitor (`/shelly/monitor`)
+
+Seconda (e ultima) voce dell'area Dispositivi: monitor del consumo istantaneo
+dei dispositivi con power meter (`PM` e `PM_RELAY`).
+
+- Carica i dispositivi con `GET /shelly/dispositivi` (filtro
+  `hasPowerMeter(tipo)`) e per ognuno legge lo stato corrente con
+  `GET /shelly/stato/{id}`: il `potenza_w` è la potenza istantanea mostrata.
+- **Intervallo di aggiornamento** (client-side): campo numerico
+  "Aggiorna ogni X secondi" (default `5`) con pulsante **"Applica"**. Il valore
+  è un intero ≥ 1 (validazione client) e determina il `refetchInterval` di
+  React Query delle letture. È l'unico intervallo di rilettura: il backend non
+  campiona i dispositivi e non esistono parametri di configurazione correlati,
+  quindi non comporta alcun `PUT /config`.
+- **Totale consumo istantaneo**: somma dei `potenza_w` non null dei dispositivi
+  letti, in evidenza e colorata con la stessa scala del grafico; `—` se nessuna
+  misura è disponibile. I dispositivi con `potenza_w = null` sono **esclusi**
+  dalla somma, non contati come 0.
+- **Grafico a barre** (Recharts): una barra per dispositivo con altezza ∝
+  potenza su scala fissa `0–2000 W` (valori oltre 2000 W saturano la barra) e
+  **colore in base alla potenza**:
+  - verde (`#22c55e`) sotto i 100 W;
+  - tra 100 W e 2000 W l'interpolazione passa per il **giallo/arancione**;
+  - rosso (`#ef4444`) a 2000 W e oltre.
+  Una legenda rende esplicita la scala "verde < 100 W → arancione → rosso
+  ≥ 2000 W".
+- Sotto il grafico, l'elenco dei dispositivi con pallino colorato, potenza in W
+  e la misura secondaria (tensione · corrente); indicazione dell'ultimo
+  aggiornamento (ora locale del dispositivo) e avviso quando un dispositivo non
+  risponde.
+- Stati obbligatori: loading/errore dell'elenco dispositivi, nessun dispositivo
+  con power meter configurato, misure `null` mostrate come `—` con barra vuota,
+  avviso su dispositivi non raggiungibili.
+- **Layout orizzontale (tablet 7")**: con `landscape` e larghezza ≥ 900 px la
+  pagina passa a due colonne: a sinistra intervallo di aggiornamento e totale
+  (colonna `minmax(0, 20rem)`), a destra il dettaglio. Il grafico diventa un
+  **BarChart orizzontale** (nome dispositivo sull'asse Y, potenza su quello X,
+  scala fissa `0–2000 W` e stessi colori della versione verticale) e l'elenco
+  dei dispositivi passa a griglia a due colonne. La semantica dei dati non
+  cambia: stesse misure, stesso totale, stesse chiavi di test.
+
 ## 7. Gestione di data e ora nel fuso configurato
 
 - Il backend interpreta, memorizza e restituisce date, timestamp e intervalli del
@@ -446,6 +603,14 @@ forma di **tabella compatta**.
 | FE-NF-11 | La chiave non deve mai comparire nei log applicativi né essere mostrata in chiaro in UI |
 | FE-NF-12 | **Visualizzazione grafica richiesta** dei log di polling: temperatura interna/target, umidità interna, temperatura esterna, umidità esterna e stato caldaia, con scale coerenti |
 | FE-NF-13 | La dashboard Stato deve mostrare `temperatura`, `umidita`, `temperatura_target`, `relay_acceso`, `temperatura_esterna` e `umidita_esterna`, gestire i dati esterni nullable, distinguere loading/error/ultimo aggiornamento e non esporre comandi di relay |
+| FE-NF-14 | L’app è organizzata in due aree (Termostato/Dispositivi) con selettore nell’header e bottom navigation dedicata per area (5 voci per il termostato, 2 per i dispositivi) |
+| FE-NF-15 | L’area Dispositivi gestisce i tipi `RELAY`/`PM`/`PM_RELAY`: stato unico da `GET /shelly/stato/{id}` e comando on/off dei relè via `POST /shelly/relay/{id}/on|off` |
+| FE-NF-16 | Gli endpoint `/shelly/*` restano reali anche in profilo mock; il frontend non conosce il profilo attivo |
+| FE-NF-17 | I campi `null` di `GET /shelly/stato/{id}` sono resi come non disponibili (mai `0`): un `PM` non mostra lo stato del relè, un `RELAY` non mostra misure, una misura mancante non entra nelle somme |
+| FE-NF-18 | La conferma dell'esito del comando relay si basa sul campo `esito` e mai su `acceso`: con `esito === true` viene mostrata la conferma "Comando eseguito" (anche con auto-off hardware o relay già nello stato richiesto), con la transizione descritta da `stato_precedente` se valorizzato; `esito`/`stato_precedente` assenti o `null` non fanno fallire la card; su errori non-2xx nessuna conferma di successo |
+| FE-NF-19 | L’area Dispositivi include la pagina **Monitor** (`/shelly/monitor`): totale e grafico a barre del consumo istantaneo dei dispositivi con power meter (semantica e colori in cap. 6.10) con intervallo di aggiornamento client-side configurabile in secondi (intero ≥ 1, default 5) |
+| FE-NF-20 | Non esistono pagine di storico consumi Shelly né parametri di configurazione del polling dei consumi: il frontend non deve chiamare endpoint inesistenti né inviare campi rifiutati da `PUT /config` |
+| FE-NF-21 | Layout **landscape per tablet 7"** (query `(orientation: landscape) and (min-width: 900px) and (min-height: 500px)`, breakpoint Tailwind `land`): la bottom navigation fissa diventa un rail laterale a sinistra (80 px, icona + etichetta, target ≥ 44 px) per liberare l'altezza verticale, il contenuto usa tutta la larghezza (`max-w-[1440px]`) e la pagina Monitor adotta grafico ed elenco su più colonne. Sugli smartphone (incluso l'iPhone in orizzontale, escluso dall'altezza minima) resta il layout verticale attuale |
 
 ## 9. Mappatura endpoint → funzionalità
 
@@ -459,7 +624,11 @@ forma di **tabella compatta**.
 | `/log` | GET | Lista log polling con filtro `da`/`a` e grafico |
 | `/log/errori` | GET | Lista log errori con filtro `da`/`a` |
 | `/actuator/health` | GET | Indicatore stato backend nell'header (opzionale) |
-| `mock/*`, `/temperature`, `/relay` | — | **Non usati** dal frontend |
+| `/shelly/dispositivi` | GET | Area Dispositivi: elenco dispositivi con tipo e capacità |
+| `/shelly/stato/{id}` | GET | Vista unica dello stato: card Dispositivi (relè + misure, polling 30 s) e Monitor (potenza per il grafico e il totale, polling configurabile) |
+| `/shelly/relay/{id}` | GET | **Non usato**: il frontend legge lo stato da `/shelly/stato/{id}` |
+| `/shelly/relay/{id}/on` / `off` | POST | Card relè: comando Accendi/Spegni, con conferma esplicita `esito` e transizione `stato_precedente` (cap. 6.9 e FE-NF-18) |
+| `mock/*`, `/temperature`, `/relay` | — | **Non usati** dal frontend (reali solo gli endpoint `/shelly/*`, in ogni profilo) |
 
 ## 10. Build e deploy su Apache
 
@@ -568,7 +737,17 @@ Alias /termostato /var/www/termostato-fe
   obbligatorio, sovrapposizione intervalli, `da <= a`), rendering del grafico e
   della tabella log, dashboard Stato con risposta completa e con
   `temperatura_target = null`, gestione loading/500/refresh, gate API-key
-  (chiave assente → inserimento; `401` → invalidazione + redirect).
+  (chiave assente → inserimento; `401` → invalidazione + redirect), pagina
+  Dispositivi Shelly (relay acceso/spento, comando, misure di `PM` e
+  `PM_RELAY`, misure `null` mostrate come `—`, commandi assenti sui `PM`, stato
+  non disponibile con comando disabilitato) e pagina Monitor (totale, grafico,
+  lista, esclusione dal totale dei `null`, intervallo di aggiornamento). Per il
+  comando relay: conferma "Comando eseguito" con `esito === true` (anche senza
+  `stato_precedente` e con `acceso` invariato/falso), transizioni
+  "da spento ad acceso"/"da acceso a spento" e "era già acceso/spento", nessuna
+  conferma con `esito === false` e con errori non-2xx (viene mostrato il
+  `message` dell’`ApiError`). Per la navigazione: tab "💡 Dispositivi" e bottom
+  navigation dell’area con le sole due voci.
 - **Contract**: test che i tipi generati corrispondano al contratto (rigenerazione
   in CI e diff), inclusa la risposta di `GET /stato`.
 - **E2E** (Playwright, opzionale): flusso "gate → leggi Stato → leggi config →
@@ -598,6 +777,33 @@ Alias /termostato /var/www/termostato-fe
    `GET /stato`, read-only, con refresh manuale e automatico ogni 60 secondi;
    bottom navigation a 5 voci con Stato al posto di Config. La configurazione
    completa resta raggiungibile da Impostazioni (cap. 6.1 e FE-NF-13).
+7. **Selettore d'area**: DECISO → l'app è divisa in **due aree** (Termostato
+   e Dispositivi) selezionabili con tabs nell'header ("🏠 Termostato",
+   "💡 Dispositivi"); la bottom navigation cambia in base all'area (5 voci
+   per il termostato, **2** per i dispositivi). L'area attiva è derivata dal
+   pathname (prefisso `/shelly`). Cap. 6.0 e FE-NF-14.
+8. **Evolutiva Shelly**: DECISO → area dedicata con elenco dispositivi (relè
+   comandabili + power monitor), comando on/off dei relè e **assenza di storico
+   consumi**: il backend non registra le misure, quindi non esistono pagine di
+   consultazione dei log (capp. 6.8–6.10 e FE-NF-15/16/17/20). Gli endpoint
+   `/shelly/*` sono reali anche in profilo mock.
+9. **Conferma esito relay**: DECISO → la card relay conferma il comando in base
+   al campo `esito` (e non ad `acceso`), mostrando "Comando eseguito" con la
+   transizione descritta da `stato_precedente` se presente. Retrocompatibile con
+   backend che non inviano i nuovi campi. Dopo il comando la card rilegge lo
+   stato subito e dopo ~3 s (cap. 6.9 e FE-NF-18).
+10. **Monitor consumo istantaneo**: DECISO → la pagina **Monitor**
+    (`/shelly/monitor`) è l'unica pagina di consumo dell'area: totale in
+    evidenza e grafico a barre dei dispositivi con power meter che cresce e
+    cambia colore (verde < 100 W → arancione → rosso ≥ 2000 W) con
+    intervallo di aggiornamento client-side configurabile (intero ≥ 1 s,
+    default 5). Le pagine di storico consumi (indice e dettaglio con range di
+    date) sono state rimosse insieme al logging backend (cap. 6.10 e FE-NF-19).
+11. **Stato Shelly senza storico**: DECISO → `GET /shelly/stato/{id}` è
+    l'unica fonte di stato per il frontend (relè e misure nella stessa
+    risposta, con `null` per i campi non applicabili al tipo); il polling è lato
+    client e i `null` non vengono mai mostrati come `0` (capp. 6.8/6.9 e
+    FE-NF-17).
 
 ## 13. Note di implementazione PWA
 

@@ -25,13 +25,13 @@ export function EmptyState({ children }: { children: ReactNode }) {
   return <div className="app-card text-center text-sm text-slate-400">{children}</div>;
 }
 
-export function InlineNotice({ children, tone = 'info' }: { children: ReactNode; tone?: 'info' | 'warning' | 'success' }) {
+export function InlineNotice({ children, tone = 'info', role }: { children: ReactNode; tone?: 'info' | 'warning' | 'success'; role?: string }) {
   const styles = {
     info: 'border-sky-500/30 bg-sky-500/10 text-sky-200',
     warning: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
     success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
   };
-  return <div className={`rounded-xl border px-3 py-2 text-sm ${styles[tone]}`}>{children}</div>;
+  return <div role={role} className={`rounded-xl border px-3 py-2 text-sm ${styles[tone]}`}>{children}</div>;
 }
 
 export function FieldError({ message }: { message?: string }) {

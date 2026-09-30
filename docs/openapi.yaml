@@ -13,12 +13,29 @@ info:
     Le ore degli intervalli del calendario sono invece interpretate nel
     `fuso_orario` configurato, con regole DST controllate da `ora_legale`.
 
+    Gli endpoint `/shelly/*` sono sempre attivi indipendentemente dal profilo
+    Spring. Con il profilo `mock` vengono simulati solo il sensore di
+    temperatura/umidità e il relay del termostato (che puntano a
+    `localhost:8080`); i dispositivi Shelly continuano a essere interrogati
+    ai loro IP reali.
+
+    La lettura dello stato dei dispositivi Shelly è centralizzata in
+    `GET /shelly/stato/{id}`: ogni chiamata interroga il dispositivo in tempo
+    reale e restituisce il relè (se presente) e le misure elettriche (se
+    presenti). Non esiste uno storico delle misure lato backend.
+
+    Le risposte ai comandi `POST /shelly/relay/{id}/on|off` includono i campi
+    `esito` (conferma esplicita dell'esecuzione del comando da parte del
+    dispositivo) e `stato_precedente` (stato del relay prima del comando, per
+    i device Gen 3; `null` per i Gen 1). Su `GET /shelly/relay/{id}` entrambi
+    i campi sono `null`.
+
     Gli endpoint `/temperature`, `/relay` e `/mock/*` sono disponibili solo
     quando è attivo il profilo Spring `mock`; simulano il sensore e il relay
     per lo scenario E2E. Il client ntfy e gli endpoint configurati per i
     dispositivi fisici sono integrazioni outbound e non fanno parte di questa
     specifica inbound.
-  version: 1.2.0
+  version: 1.5.0
   contact:
     name: Team Termostato
 servers:
@@ -35,6 +52,13 @@ tags:
     description: Log dei cicli di polling e degli errori
   - name: Stato
     description: Stato corrente letto da sensore, configurazione e relay
+  - name: Shelly
+    description: |
+      Dispositivi Shelly — relay, power monitor e relè con power meter
+      (Shelly 1PM, tipo `PM_RELAY`). Sempre attivi indipendentemente dal profilo
+      Spring; con il profilo `mock` i device Shelly continuano a essere
+      interrogati ai loro IP reali nella rete locale. Lo stato è letto in tempo
+      reale dal dispositivo e non viene persistito.
   - name: Actuator
     description: Endpoint operativi Spring Boot Actuator
   - name: Mock
@@ -427,6 +451,223 @@ paths:
                 type: object
                 additionalProperties: true
 
+  /shelly/dispositivi:
+    get:
+      tags: [Shelly]
+      summary: Lista di tutti i dispositivi Shelly configurati
+      description: |
+        Restituisce la lista completa dei dispositivi con i loro metadati
+        (id, nome, ip, tipo, modello, generazione). Utile al frontend per
+        costruire la UI dinamicamente senza hardcodare gli id.
+        I dispositivi sono letti dal file `shelly.json` al primo avvio.
+      operationId: getShellyDispositivi
+      responses:
+        '200':
+          description: Lista dispositivi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShellyDeviceResponse'
+              example:
+                - id: portone
+                  nome: Portone
+                  ip: 192.168.1.2
+                  tipo: RELAY
+                  modello: SHSW-1
+                  generazione: 1
+                - id: frigo-e-forno
+                  nome: Frigo e Forno
+                  ip: 192.168.1.9
+                  tipo: PM
+                  modello: SNPM-001PCEU16
+                  generazione: 3
+                - id: shelly1pm
+                  nome: Shelly 1PM
+                  ip: 192.168.1.20
+                  tipo: PM_RELAY
+                  modello: SHSW-PM
+                  generazione: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /shelly/relay/{id}:
+    get:
+      tags: [Shelly]
+      summary: Legge lo stato corrente di un relay Shelly
+      description: |
+        Interroga in tempo reale il dispositivo fisico e restituisce lo stato
+        con i metadati del device. Il dispositivo deve essere di tipo `RELAY` o
+        `PM_RELAY`. Per uno stato completo (relè più misure elettriche)
+        usare `GET /shelly/stato/{id}`.
+      operationId: getShellyRelayStato
+      parameters:
+        - $ref: '#/components/parameters/ShellyDeviceId'
+      responses:
+        '200':
+          description: Stato del relay con metadati dispositivo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShellyRelayStatoResponse'
+              example:
+                id: portone
+                nome: Portone
+                ip: 192.168.1.2
+                modello: SHSW-1
+                generazione: 1
+                tipo: RELAY
+                acceso: false
+                esito: null
+                stato_precedente: null
+        '400':
+          description: Il dispositivo esiste ma è di tipo PM, non RELAY
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /shelly/relay/{id}/on:
+    post:
+      tags: [Shelly]
+      summary: Accende il relay di un dispositivo Shelly
+      description: |
+        Invia il comando di accensione al dispositivo fisico, poi rilegge lo
+        stato e lo restituisce insieme all'esito esplicito del comando
+        (`esito`) e allo stato precedente (`stato_precedente`). Il dispositivo
+        deve essere di tipo `RELAY` o `PM_RELAY`; per i `PM` la risposta è `400`.
+
+        Nota: i dispositivi Portone e Cancello sono configurati con
+        autospegnimento hardware dopo 1 secondo. Il backend non gestisce
+        questa logica; lo stato restituito è quello immediatamente successivo
+        al comando. Non usare `acceso` per valutare l'esito: verifica `esito`.
+      operationId: accendiShellyRelay
+      parameters:
+        - $ref: '#/components/parameters/ShellyDeviceId'
+      responses:
+        '200':
+          description: Stato aggiornato del relay con metadati dispositivo ed esito
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShellyRelayStatoResponse'
+              example:
+                id: terrazzo
+                nome: Terrazzo
+                ip: 192.168.1.10
+                modello: S3SW-001X8EU
+                generazione: 3
+                tipo: RELAY
+                acceso: true
+                esito: true
+                stato_precedente: false
+        '400':
+          description: Il dispositivo esiste ma è di tipo PM, non RELAY
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /shelly/relay/{id}/off:
+    post:
+      tags: [Shelly]
+      summary: Spegne il relay di un dispositivo Shelly
+      description: |
+        Invia il comando di spegnimento al dispositivo fisico, poi rilegge lo
+        stato e lo restituisce insieme all'esito esplicito del comando
+        (`esito`) e allo stato precedente (`stato_precedente`). Il dispositivo
+        deve essere di tipo `RELAY` o `PM_RELAY`; per i `PM` la risposta è `400`.
+      operationId: spegniShellyRelay
+      parameters:
+        - $ref: '#/components/parameters/ShellyDeviceId'
+      responses:
+        '200':
+          description: Stato aggiornato del relay con metadati dispositivo ed esito
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShellyRelayStatoResponse'
+              example:
+                id: terrazzo
+                nome: Terrazzo
+                ip: 192.168.1.10
+                modello: S3SW-001X8EU
+                generazione: 3
+                tipo: RELAY
+                acceso: false
+                esito: true
+                stato_precedente: true
+        '400':
+          description: Il dispositivo esiste ma è di tipo PM, non RELAY
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /shelly/stato/{id}:
+    get:
+      tags: [Shelly]
+      summary: Legge in tempo reale lo stato completo di un dispositivo Shelly
+      description: |
+        Interroga il dispositivo fisico e restituisce lo stato completo: il
+        relè se il tipo ne è dotato, le misure elettriche se il tipo ne è dotato,
+        entrambe per gli Shelly 1PM (`PM_RELAY`). Non esiste persistenza: ogni
+        chiamata legge il dispositivo, quindi l'aggiornamento periodico è
+        responsabilità del client.
+
+        I campi sono sempre presenti; quelli non applicabili al tipo valgono
+        `null` (`acceso` per `PM`, `potenza_w`/`tensione_v`/`corrente_a` per
+        `RELAY`). I valori misurati sono `null` anche quando il dispositivo ha
+        restituito una lettura non interpretabile: non vanno resi come `0`.
+      operationId: getShellyStato
+      parameters:
+        - $ref: '#/components/parameters/ShellyDeviceId'
+      responses:
+        '200':
+          description: Stato del dispositivo con metadati
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShellyStatoResponse'
+              example:
+                id: shelly1pm
+                nome: Shelly 1PM
+                ip: 192.168.1.20
+                modello: SHSW-PM
+                generazione: 1
+                tipo: PM_RELAY
+                acceso: true
+                potenza_w: 45.2
+                tensione_v: 229.8
+                corrente_a: 0.197
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /temperature:
     get:
       tags: [Mock]
@@ -594,8 +835,27 @@ components:
         type: string
         format: date
       example: '2026-09-04'
+    ShellyDeviceId:
+      name: id
+      in: path
+      required: true
+      description: Identificatore del dispositivo Shelly (es. `portone`, `frigo-e-forno`).
+      schema:
+        type: string
+      example: portone
 
   responses:
+    NotFound:
+      description: Risorsa non trovata
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            timestamp: '2026-09-20T17:00:00Z'
+            status: 404
+            error: Not Found
+            message: 'Dispositivo Shelly non trovato: inesistente'
     Unauthorized:
       description: API-key assente, vuota o non autorizzata
       headers:
@@ -741,7 +1001,11 @@ components:
           example: true
         notifiche_errori_abilitate:
           type: boolean
-          description: Abilita le notifiche degli errori tramite ntfy.
+          description: |
+            Abilita le notifiche degli errori tramite ntfy. Gli errori di lettura
+            meteo esterno (`READ_WEATHER`) non generano notifiche ntfy
+            indipendentemente da questo flag: si tratta di un servizio terzo
+            informativo e la sua irraggiungibilità non deve produrre rumore.
           default: true
           example: true
         meteo_esterno_url:
@@ -1007,7 +1271,11 @@ components:
           example: '2026-09-04T10:00:00.000000000Z'
         tipo_errore:
           type: string
-          description: Categoria tecnica dell'errore.
+          description: |
+            Categoria tecnica dell'errore. Valori possibili:
+            `READ_TEMP` (sensore temperatura), `READ_WEATHER` (meteo esterno — non genera ntfy),
+            `READ_RELAY` (lettura relay), `TURN_ON` (accensione caldaia),
+            `TURN_OFF` (spegnimento caldaia).
           example: READ_TEMP
         caldaia_accesa:
           type: boolean
@@ -1025,6 +1293,148 @@ components:
           format: int32
           minimum: 1
           example: 1
+
+    ShellyTipo:
+      type: string
+      description: |
+        Tipo di dispositivo Shelly. `RELAY` = solo relè; `PM` = solo power
+        monitor; `PM_RELAY` = relè e power meter (Shelly 1PM).
+      enum: [RELAY, PM, PM_RELAY]
+      example: RELAY
+
+    ShellyDeviceResponse:
+      type: object
+      description: Metadati di un dispositivo Shelly, senza stato live.
+      additionalProperties: false
+      required: [id, nome, ip, tipo, modello, generazione]
+      properties:
+        id:
+          type: string
+          description: Identificatore univoco del dispositivo.
+          example: portone
+        nome:
+          type: string
+          description: Nome descrittivo del dispositivo.
+          example: Portone
+        ip:
+          type: string
+          description: Indirizzo IP del dispositivo nella rete locale.
+          example: 192.168.1.2
+        tipo:
+          $ref: '#/components/schemas/ShellyTipo'
+        modello:
+          type: string
+          description: Codice modello del dispositivo Shelly.
+          example: SHSW-1
+        generazione:
+          type: integer
+          format: int32
+          description: Generazione hardware del dispositivo (1 o 3).
+          enum: [1, 3]
+          example: 1
+
+    ShellyRelayStatoResponse:
+      type: object
+      description: Stato corrente di un relay Shelly con metadati del dispositivo.
+      additionalProperties: false
+      required: [id, nome, ip, modello, generazione, tipo, acceso]
+      properties:
+        id:
+          type: string
+          example: portone
+        nome:
+          type: string
+          example: Portone
+        ip:
+          type: string
+          example: 192.168.1.2
+        modello:
+          type: string
+          example: SHSW-1
+        generazione:
+          type: integer
+          format: int32
+          enum: [1, 3]
+          example: 1
+        tipo:
+          $ref: '#/components/schemas/ShellyTipo'
+        acceso:
+          type: boolean
+          description: Stato corrente del relay, letto direttamente dal dispositivo.
+          example: false
+        esito:
+          type: boolean
+          nullable: true
+          description: |
+            Esito esplicito del comando: `true` se il dispositivo ha confermato
+            l'esecuzione (risposta `Switch.Set` ricevuta). Presente solo nelle
+            risposte a `POST /shelly/relay/{id}/on|off`; `null` su
+            `GET /shelly/relay/{id}`.
+          example: true
+        stato_precedente:
+          type: boolean
+          nullable: true
+          description: |
+            Stato del relay prima del comando (equivalente di `was_on` della API
+            RPC Shelly). Valorizzato per i dispositivi Gen 3 (es. `terrazzo`);
+            `null` per i Gen 1 (es. `portone`) e su `GET /shelly/relay/{id}`.
+          example: false
+
+    ShellyStatoResponse:
+      type: object
+      description: |
+        Stato in tempo reale di un dispositivo Shelly con i suoi metadati.
+        I campi sono sempre presenti; quelli non applicabili al tipo del
+        dispositivo valgono `null`.
+      additionalProperties: false
+      required: [id, nome, ip, modello, generazione, tipo, acceso, potenza_w, tensione_v, corrente_a]
+      properties:
+        id:
+          type: string
+          example: shelly1pm
+        nome:
+          type: string
+          example: Shelly 1PM
+        ip:
+          type: string
+          example: 192.168.1.20
+        modello:
+          type: string
+          example: SHSW-PM
+        generazione:
+          type: integer
+          format: int32
+          enum: [1, 3]
+          example: 1
+        tipo:
+          $ref: '#/components/schemas/ShellyTipo'
+        acceso:
+          type: boolean
+          nullable: true
+          description: |
+            Stato del relè letto dal dispositivo; `null` per i tipi senza
+            relè (`PM`).
+          example: true
+        potenza_w:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            Potenza istantanea in Watt; `null` per i tipi senza power meter
+            (`RELAY`) o quando la misura non è disponibile.
+          example: 45.2
+        tensione_v:
+          type: number
+          format: double
+          nullable: true
+          description: Tensione in Volt; `null` se non applicabile o non letta.
+          example: 229.8
+        corrente_a:
+          type: number
+          format: double
+          nullable: true
+          description: Corrente in Ampere; `null` se non applicabile o non letta.
+          example: 0.197
 
     ApiError:
       type: object
