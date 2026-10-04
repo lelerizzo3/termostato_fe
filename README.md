@@ -53,8 +53,10 @@ L'app è divisa in due aree, selezionabili con i tabs nell'header (**Termostato*
 - `/stato`: dashboard read-only con `GET /stato`, temperatura e umidità interne,
   target, relay, temperatura e umidità esterne e refresh automatico ogni 60 secondi.
 - `/config`: configurazione completa (`GET`/`PUT /config`), inclusi il flag
-  `notifiche_errori_abilitate`, `fuso_orario`, `ora_legale` e i parametri del
-  meteo esterno, raggiungibile da Impostazioni.
+  `notifiche_errori_abilitate`, `fuso_orario`, `ora_legale`, i parametri del
+  meteo esterno e la sezione "Alert di consumo" (`alert_soglia` in watt e
+  `alert_polling` in secondi, entrambi `0` = disabilitato; l'alert scatta solo se
+  i due valori sono entrambi maggiori di zero), raggiungibile da Impostazioni.
 - `/calendario`: editor accordion dei sette giorni con orari nel fuso configurato dal backend, senza conversione UTC.
 - `/log`: grafico Recharts e tabella dettaglio virtualizzata, con filtri nel fuso configurato.
 - `/errori`: log errori filtrabili per intervallo di date nel fuso configurato.
@@ -71,9 +73,11 @@ uno storico, quindi non esistono pagine di consultazione dei consumi.
   `esito`/`stato_precedente` del comando) e misure di potenza, tensione e
   corrente per i power monitor (`PM` e `PM_RELAY`). I valori non disponibili
   sono mostrati come `—`.
-- `/shelly/monitor`: totale e monitor del consumo istantaneo dei power meter:
-  barre che crescono e cambiano colore (verde < 100 W → arancione → rosso
-  ≥ 2000 W), con intervallo di aggiornamento configurabile in secondi.
+- `/shelly/monitor`: totale e monitor del consumo istantaneo dei power meter con
+  UI domotica: riquadro del totale con anello e barra sulla scala fissa
+  0–3000 W, il controllo dell'intervallo di aggiornamento in secondi e una riga a
+  barra colorata per dispositivo (verde < 100 W → arancione → rosso ≥ 3000 W)
+  con watt, tensione, corrente e quota sul totale.
 
 ## Layout orizzontale (tablet 7")
 
@@ -86,10 +90,12 @@ la larghezza:
   così l'altezza verticale resta libera per i dati;
 - il contenuto si estende fino a 1440 px invece dei 768 px della colonna
   verticale;
-- la pagina Monitor mette a sinistra intervallo di aggiornamento e totale
-  consumo, a destra il grafico e l'elenco dispositivi, con il grafico a **barre
-  orizzontali** (nome a sinistra, watt in fondo alla barra) e l'elenco dei
-  dispositivi su due colonne.
+- la pagina Monitor usa due colonne: a sinistra il riquadro del totale con anello,
+  barra, legenda, nota di lettura e intervallo di aggiornamento, a destra
+  l'elenco dei dispositivi con una **barra orizzontale colorata** per riga
+  (nome e watt sopra, tensione·corrente e quota sotto). Le due colonne restano
+  bilanciate e l'insieme entra nei 600 px di altezza del Nexus 7 senza
+  scorrimento.
 
 La versione orizzontale dell'iPhone non rientra nei vincoli di altezza minima e
 continua a usare il layout verticale.
@@ -127,9 +133,12 @@ Il proxy non inietta la API-key: inoltra quella fornita dal browser nell'header
 ## Struttura documentale
 
 - `docs/specifiche-funzionali.md`: requisiti funzionali backend (incl. dispositivi Shelly, sez. 7.5).
-- `docs/openapi.yaml`: contratto REST (v1.5.0 con endpoint `/shelly/*`,
-  stato unificato `/shelly/stato/{id}` e conferma esito relay
-  `esito`/`stato_precedente`).
+- `docs/openapi.yaml`: contratto REST (v1.6.0 con endpoint `/shelly/*`,
+  stato unificato `/shelly/stato/{id}`, conferma esito relay
+  `esito`/`stato_precedente` e i campi `alert_soglia`/`alert_polling`).
+- `docs/alert-consumo-frontend.md`: handoff backend→frontend dell'alert di consumo
+  (`alert_soglia`, `alert_polling`): regola di attivazione congiunta, reinvio
+  obbligatorio dei due campi nella `PUT /config` e troncamento del polling.
 - `docs/modifiche-device-shelly-20260926.md`: handoff delle modifiche backend
   che hanno rimosso lo storico consumi Shelly e introdotto
   `GET /shelly/stato/{id}`.

@@ -88,7 +88,7 @@ export function SettingsPage() {
 
       <section className="app-card">
         <h2 className="section-title">Impostazioni applicative</h2>
-        <p className="text-sm leading-5 text-slate-400">Modifica soglia, override, polling, notifiche e parametri di conservazione.</p>
+        <p className="text-sm leading-5 text-slate-400">Modifica soglia, override, polling, notifiche, alert di consumo e parametri di conservazione.</p>
         <Link className="btn-secondary mt-4 block w-full text-center" to="/config">Apri configurazione</Link>
       </section>
 

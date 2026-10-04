@@ -30,6 +30,13 @@ export interface paths {
          *     un istante futuro rispetto all'ora corrente (orario civile locale):
          *     un valore già trascorso viene rifiutato con `400`.
          *
+         *     L'operazione è una sostituzione completa: i campi assenti dal payload
+         *     vengono azzerati senza errore. In particolare `alert_soglia` e
+         *     `alert_polling` devono essere **sempre** reinviati, altrimenti l'alert di
+         *     consumo viene silenziosamente disattivato. `alert_polling` deve essere un
+         *     intero: una parte decimale viene troncata, non rifiutata. I valori negativi
+         *     di entrambi i campi sono rifiutati con `400`.
+         *
          */
         put: operations["updateConfiguration"];
         post?: never;
@@ -463,6 +470,8 @@ export interface components {
          *     `override_attivo` è true, `temperatura_override` è obbligatoria; se è false può essere null.
          *     `override_fine` è opzionale e indica quando termina la forzatura: è un orario civile
          *     locale (stesso fuso/DST del calendario) e, se presente su `PUT`, deve essere futuro.
+         *     L'alert di consumo è attivo solo se `alert_soglia` e `alert_polling` sono entrambi
+         *     maggiori di zero.
          *      */
         SystemConfiguration: {
             /**
@@ -591,6 +600,32 @@ export interface components {
              *     ]
              */
             api_keys: string[];
+            /**
+             * Format: double
+             * @description Somma della potenza istantanea (in watt) dei dispositivi Shelly che
+             *     effettuano misurazioni (tipi `PM` e `PM_RELAY`) oltre la quale inviare
+             *     l'alert ntfy. L'alert scatta solo se la somma è **strettamente maggiore**
+             *     della soglia e viene reinviato a ogni giro di controllo in cui la somma
+             *     resta sopra soglia.
+             *     L'alert è attivo solo se questo valore è `> 0` **e** `alert_polling` è `> 0`:
+             *     da solo non basta. `0` (o `null`, normalizzato a `0`) disabilita la funzione.
+             *     Su `PUT` va sempre reinviato: se manca viene azzerato senza errore.
+             *
+             * @default 0
+             * @example 1500.75
+             */
+            alert_soglia: number;
+            /**
+             * Format: int32
+             * @description Ogni quanti secondi controllare la somma della potenza dei dispositivi Shelly.
+             *     `0` disabilita la funzione. Su `PUT` va sempre reinviato ed è troncato a intero
+             *     dal backend: `2.5` diventa `2` senza errore, quindi va inviato come intero.
+             *     È indipendente da `intervallo_polling_secondi`, dedicato al ciclo della caldaia.
+             *
+             * @default 0
+             * @example 30
+             */
+            alert_polling: number;
         };
         /** @description Calendario settimanale con esattamente i sette giorni canonici. */
         CalendarDocument: {
@@ -1064,7 +1099,9 @@ export interface operations {
                  *       "database_path": "./data/termostato.db",
                  *       "api_keys": [
                  *         "sostituire-con-una-chiave-segreta"
-                 *       ]
+                 *       ],
+                 *       "alert_soglia": 1500.75,
+                 *       "alert_polling": 30
                  *     } */
                 "application/json": components["schemas"]["SystemConfiguration"];
             };

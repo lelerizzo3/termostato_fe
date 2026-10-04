@@ -328,6 +328,27 @@ base all'area**:
   - `api_keys`: editor di lista di stringhe (aggiungi/rimuovi), `uniqueItems`.
   - `database_path`: **read-only** in UI (bootstrap-only; va rispedito invariato
     nel `PUT`). Mostrare nota "modificabile solo al riavvio".
+  - `alert_soglia`: number ≥ 0 in watt (decimale ammesso, es. `1500.75`).
+  - `alert_polling`: intero ≥ 0 in secondi, con `step="1"` sull'input.
+- I due campi dell'alert di consumo (`alert_soglia`, `alert_polling`) stanno in una
+  sezione dedicata "Alert di consumo" e vanno **sempre** reinviati nella `PUT`: il
+  backend è una sostituzione completa e azzera i campi mancanti **senza restituire
+  errore**, quindi ometterli disattiverebbe l'alert silenziosamente. Se un backend
+  vecchio non espone i due campi, il form ripiega esplicitamente su `0`/`0` invece
+  di mandare `undefined`.
+- La sezione rende visibile la **regola di attivazione congiunta** (`alert_soglia > 0`
+  **AND** `alert_polling > 0`): testo esplicativo ("servono entrambi i valori
+  maggiori di zero") più una riga di stato derivata dai due valori
+  (`Alert attivo` / `Alert disabilitato`). Lo stato si deduce dai campi: il backend
+  non espone alcun indicatore di superamento, ultima somma o storico alert.
+- Validazione client: `min="0"` su entrambi gli input e `step="1"` su `alert_polling`
+  (il backend **tronca** `2.5` a `2` senza errore). Lo schema Zod rifiuta comunque
+  negativi e non interi come seconda rete; il `400` del backend resta gestito come
+  rete di sicurezza.
+- `debug_mode` e `notifiche_errori_abilitate` **non** controllano l'alert di consumo:
+  non vanno proposti come opzioni nella sua sezione. Le notifiche di superamento
+  viaggiano sul topic ntfy già configurato e la frequenza di controllo
+  (`alert_polling`) è indipendente da `intervallo_polling_secondi`.
 - La `PUT /config` richiede l'oggetto completo → il form deve reinviare **tutti**
   i campi letti, non solo quelli modificati (merge sullo stato caricato).
 - I campi del logging dei consumi Shelly (`intervallo_polling_consumi_secondi`,
@@ -530,37 +551,54 @@ dei dispositivi con power meter (`PM` e `PM_RELAY`).
   `hasPowerMeter(tipo)`) e per ognuno legge lo stato corrente con
   `GET /shelly/stato/{id}`: il `potenza_w` è la potenza istantanea mostrata.
 - **Intervallo di aggiornamento** (client-side): campo numerico
-  "Aggiorna ogni X secondi" (default `5`) con pulsante **"Applica"**. Il valore
+  "Aggiorna ogni X secondi" (default `5`) con pulsante **"Applica"**, collocato
+  in fondo alla card del totale insieme al badge LIVE. Il valore
   è un intero ≥ 1 (validazione client) e determina il `refetchInterval` di
   React Query delle letture. È l'unico intervallo di rilettura: il backend non
   campiona i dispositivi e non esistono parametri di configurazione correlati,
   quindi non comporta alcun `PUT /config`.
 - **Totale consumo istantaneo**: somma dei `potenza_w` non null dei dispositivi
-  letti, in evidenza e colorata con la stessa scala del grafico; `—` se nessuna
-  misura è disponibile. I dispositivi con `potenza_w = null` sono **esclusi**
-  dalla somma, non contati come 0.
-- **Grafico a barre** (Recharts): una barra per dispositivo con altezza ∝
-  potenza su scala fissa `0–2000 W` (valori oltre 2000 W saturano la barra) e
-  **colore in base alla potenza**:
-  - verde (`#22c55e`) sotto i 100 W;
-  - tra 100 W e 2000 W l'interpolazione passa per il **giallo/arancione**;
-  - rosso (`#ef4444`) a 2000 W e oltre.
-  Una legenda rende esplicita la scala "verde < 100 W → arancione → rosso
-  ≥ 2000 W".
-- Sotto il grafico, l'elenco dei dispositivi con pallino colorato, potenza in W
-  e la misura secondaria (tensione · corrente); indicazione dell'ultimo
-  aggiornamento (ora locale del dispositivo) e avviso quando un dispositivo non
-  risponde.
+  letti, mostrata in un riquadro "hero" con la stessa scala delle barre,
+  accompagnata dal numero di dispositivi
+  effettivamente misurati; `—` se nessuna misura è disponibile. I dispositivi
+  con `potenza_w = null` sono **esclusi** dalla somma, non contati come 0.
+- **Barra del totale**: sotto il valore, una barra orizzontale a tutta larghezza
+  sulla scala fissa `0–3000 W` con tacche a 100 W e 3000 W, riempinta con il
+  colore del totale e con glow; accanto al valore un anello mostra la quota
+  percentuale del totale rispetto alla scala. Oltre 3000 W la barra satura al
+  100% e compare un avviso con watt e percentuale, così il valore reale resta
+  leggibile.
+- **Righe dispositivi a barre orizzontali colorate**: una riga per dispositivo
+  con icona secondo `tipo` (`PM_RELAY` ⚡, `PM` 🔌), nome, potenza in W colorata in
+  base al valore, **barra di consumo** (lunghezza ∝ `potenza_w` sulla scala
+  fissa 0–3000 W tramite `monitorBarPercent`) e sotto tensione·corrente più la
+  quota percentuale sul totale. I valori `null` mostrano `—`, barra vuota,
+  "misura non disponibile" e quota `—`.
+- **Scala colori unica** (`monitorColor`): verde (`#22c55e`) ≤ 100 W;
+  interpolazione continua verso arancione/giallo tra 100 W e 3000 W; rosso
+  (`#ef4444`) ≥ 3000 W; grigio `#334155` per i valori assenti. La legenda in
+  fondo al riquadro del totale rende esplicita la scala "verde < 100 W →
+  arancione → rosso ≥ 3000 W".
+- **Indicatore LIVE**: badge con punto pulsante accanto al campo intervallo, in
+  fondo alla card del totale (unico pannello di controllo della pagina).
 - Stati obbligatori: loading/errore dell'elenco dispositivi, nessun dispositivo
-  con power meter configurato, misure `null` mostrate come `—` con barra vuota,
-  avviso su dispositivi non raggiungibili.
-- **Layout orizzontale (tablet 7")**: con `landscape` e larghezza ≥ 900 px la
-  pagina passa a due colonne: a sinistra intervallo di aggiornamento e totale
-  (colonna `minmax(0, 20rem)`), a destra il dettaglio. Il grafico diventa un
-  **BarChart orizzontale** (nome dispositivo sull'asse Y, potenza su quello X,
-  scala fissa `0–2000 W` e stessi colori della versione verticale) e l'elenco
-  dei dispositivi passa a griglia a due colonne. La semantica dei dati non
-  cambia: stesse misure, stesso totale, stesse chiavi di test.
+  con power meter configurato, misure `null` mostrate come `—`, avviso su
+  dispositivi non raggiungibili.
+- **Guida "Come si legge"**: card in coda all'elenco, **solo in verticale**
+  (`land:hidden`), con le quattro corrispondenze (barra in alto = totale casa,
+  lunghezza = scala fissa 0–3000 W, colore = potenza, valore a destra = watt e
+  quota) e la nota sulla saturazione oltre 3000 W. In orizzontale è sostituita
+  dalla nota compatta in fondo alla card del totale.
+- **Layout orizzontale (tablet 7")**: con `landscape` e almeno 900×500 px la
+  pagina usa una griglia a due colonne `land:grid-cols-[22rem_minmax(0,1fr)]`:
+  a sinistra la card del totale (valore, anello, barra, legenda, nota compatta e
+  controllo dell'intervallo), a destra la card "Dispositivi" con tutte le righe.
+  Le due colonne risultano bilanciate (~475 px ciascuna a 7 dispositivi) e
+  l'insieme entra nei 600 px di altezza del Nexus 7 senza scorrimento; le righe
+  si compattano (`land:py-1`, `land:mt-1`). La semantica dei dati non cambia:
+  stesse misure, stesso totale, stesse chiavi di test.
+  L'attributo `data-chart-layout` vale `horizontal` in orizzontale e `vertical`
+  negli altri casi.
 
 ## 7. Gestione di data e ora nel fuso configurato
 
@@ -610,7 +648,7 @@ dei dispositivi con power meter (`PM` e `PM_RELAY`).
 | FE-NF-18 | La conferma dell'esito del comando relay si basa sul campo `esito` e mai su `acceso`: con `esito === true` viene mostrata la conferma "Comando eseguito" (anche con auto-off hardware o relay già nello stato richiesto), con la transizione descritta da `stato_precedente` se valorizzato; `esito`/`stato_precedente` assenti o `null` non fanno fallire la card; su errori non-2xx nessuna conferma di successo |
 | FE-NF-19 | L’area Dispositivi include la pagina **Monitor** (`/shelly/monitor`): totale e grafico a barre del consumo istantaneo dei dispositivi con power meter (semantica e colori in cap. 6.10) con intervallo di aggiornamento client-side configurabile in secondi (intero ≥ 1, default 5) |
 | FE-NF-20 | Non esistono pagine di storico consumi Shelly né parametri di configurazione del polling dei consumi: il frontend non deve chiamare endpoint inesistenti né inviare campi rifiutati da `PUT /config` |
-| FE-NF-21 | Layout **landscape per tablet 7"** (query `(orientation: landscape) and (min-width: 900px) and (min-height: 500px)`, breakpoint Tailwind `land`): la bottom navigation fissa diventa un rail laterale a sinistra (80 px, icona + etichetta, target ≥ 44 px) per liberare l'altezza verticale, il contenuto usa tutta la larghezza (`max-w-[1440px]`) e la pagina Monitor adotta grafico ed elenco su più colonne. Sugli smartphone (incluso l'iPhone in orizzontale, escluso dall'altezza minima) resta il layout verticale attuale |
+| FE-NF-21 | Layout **landscape per tablet 7"** (query `(orientation: landscape) and (min-width: 900px) and (min-height: 500px)`, breakpoint Tailwind `land`): la bottom navigation fissa diventa un rail laterale a sinistra (80 px, icona + etichetta, target ≥ 44 px) per liberare l'altezza verticale, il contenuto usa tutta la larghezza (`max-w-[1440px]`) e la pagina Monitor dispone totale e elenco su due colonne che entrano nei 600 px di altezza (cap. 6.10). Sugli smartphone (incluso l'iPhone in orizzontale, escluso dall'altezza minima) resta il layout verticale attuale |
 
 ## 9. Mappatura endpoint → funzionalità
 
@@ -748,6 +786,15 @@ Alias /termostato /var/www/termostato-fe
   conferma con `esito === false` e con errori non-2xx (viene mostrato il
   `message` dell’`ApiError`). Per la navigazione: tab "💡 Dispositivi" e bottom
   navigation dell’area con le sole due voci.
+- **Schermata Configurazione** (`src/pages/ConfigPage.test.tsx`): valori dei due
+  campi dell'alert di consumo letti da `GET /config`, presenza di `min="0"` e
+  `step="1"`, riga di stato `Alert attivo`/`Alert disabilitato` secondo la regola
+  di attivazione congiunta (soglia da sola, intervallo da solo, entrambi), **payload
+  di `PUT` sempre completo** — l'alert non deve disattivarsi quando si salva un altro
+  campo — rifiuto client di soglia/intervallo negativi e di intervallo decimale
+  senza chiamare il backend, `0` come disattivazione esplicita, `400` del backend
+  mostrato con il proprio `message`, ripiego a `0`/`0` se il backend non espone i
+  due campi.
 - **Contract**: test che i tipi generati corrispondano al contratto (rigenerazione
   in CI e diff), inclusa la risposta di `GET /stato`.
 - **E2E** (Playwright, opzionale): flusso "gate → leggi Stato → leggi config →
@@ -795,7 +842,7 @@ Alias /termostato /var/www/termostato-fe
 10. **Monitor consumo istantaneo**: DECISO → la pagina **Monitor**
     (`/shelly/monitor`) è l'unica pagina di consumo dell'area: totale in
     evidenza e grafico a barre dei dispositivi con power meter che cresce e
-    cambia colore (verde < 100 W → arancione → rosso ≥ 2000 W) con
+    cambia colore (verde < 100 W → arancione → rosso ≥ 3000 W) con
     intervallo di aggiornamento client-side configurabile (intero ≥ 1 s,
     default 5). Le pagine di storico consumi (indice e dettaglio con range di
     date) sono state rimosse insieme al logging backend (cap. 6.10 e FE-NF-19).

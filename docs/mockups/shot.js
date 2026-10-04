@@ -20,6 +20,7 @@ const shots = [
   ['s-status', 'schermata-8-stato.png'],
   ['s-shelly', 'schermata-9-dispositivi-shelly.png'],
   ['s-monitor', 'schermata-10-monitor.png'],
+  ['s-monitor-tab', 'schermata-11-monitor-nexus7-orizzontale.png'],
 ];
 
 const browser = await puppeteer.launch({

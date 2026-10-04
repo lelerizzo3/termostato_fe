@@ -12,6 +12,8 @@ import { nextIntervalStart } from '../lib/calendar';
 const decimal = z.coerce.number().refine((value) => Number.isFinite(value) && Math.abs(value * 10 - Math.round(value * 10)) < 1e-8, 'Usa una sola cifra decimale.');
 const nonNegativeDecimal = z.coerce.number().min(0, 'Non può essere negativa.').refine((value) => Math.abs(value * 10 - Math.round(value * 10)) < 1e-8, 'Usa una sola cifra decimale.');
 const positiveInteger = z.coerce.number().int('Inserisci un numero intero.').min(1, 'Il valore deve essere maggiore di zero.');
+const nonNegativeNumber = z.coerce.number().min(0, 'Non può essere negativo.');
+const nonNegativeInteger = z.coerce.number().int('Inserisci un numero intero.').min(0, 'Non può essere negativo.');
 
 const configurationSchema = z.object({
   soglia_attivazione: nonNegativeDecimal,
@@ -33,7 +35,9 @@ const configurationSchema = z.object({
   sensore_url: z.string().url('Inserisci un URL valido.'),
   relay_url: z.string().url('Inserisci un URL valido.'),
   database_path: z.string().min(1),
-  api_keys: z.array(z.string().min(1, 'La chiave non può essere vuota.'))
+  api_keys: z.array(z.string().min(1, 'La chiave non può essere vuota.')),
+  alert_soglia: nonNegativeNumber,
+  alert_polling: nonNegativeInteger
 }).superRefine((value, context) => {
   if (value.override_attivo && value.temperatura_override === null) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['temperatura_override'], message: 'Obbligatoria quando l’override è attivo.' });
@@ -71,19 +75,28 @@ export function ConfigPage() {
       sensore_url: '',
       relay_url: '',
       database_path: '',
-      api_keys: []
+      api_keys: [],
+      alert_soglia: 0,
+      alert_polling: 0
     }
   });
   const apiKeys = form.watch('api_keys');
   const overrideActive = form.watch('override_attivo');
   const overrideTemperature = form.watch('temperatura_override');
   const overrideEnd = form.watch('override_fine');
+  const alertSoglia = Number(form.watch('alert_soglia'));
+  const alertPolling = Number(form.watch('alert_polling'));
+  const alertSogliaW = Number.isFinite(alertSoglia) ? alertSoglia : 0;
+  const alertPollingS = Number.isFinite(alertPolling) ? alertPolling : 0;
+  const alertEnabled = alertSogliaW > 0 && alertPollingS > 0;
 
   useEffect(() => {
     if (configuration.data && !form.formState.isDirty) {
       form.reset({
         ...configuration.data,
-        override_fine: apiTimestampToLocalInput(configuration.data.override_fine)
+        override_fine: apiTimestampToLocalInput(configuration.data.override_fine),
+        alert_soglia: configuration.data.alert_soglia ?? 0,
+        alert_polling: configuration.data.alert_polling ?? 0
       });
     }
   }, [configuration.data, form]);
@@ -95,9 +108,15 @@ export function ConfigPage() {
     const payload: SystemConfiguration = {
       ...values,
       temperatura_override: values.override_attivo ? (values.temperatura_override as number | null) : null,
-      override_fine: values.override_attivo ? localInputToApiTimestamp(values.override_fine) : null
+      override_fine: values.override_attivo ? localInputToApiTimestamp(values.override_fine) : null,
+      alert_soglia: values.alert_soglia,
+      alert_polling: values.alert_polling
     };
-    await update.mutateAsync(payload);
+    try {
+      await update.mutateAsync(payload);
+    } catch {
+      // Lo stato di errore è già esposto dalla mutazione e mostrato in form.
+    }
   }
 
   function setNextInterval() {
@@ -199,6 +218,24 @@ export function ConfigPage() {
       </section>
 
       <section className="app-card">
+        <h2 className="section-title">Alert di consumo</h2>
+        <NumberField label="Soglia di consumo (W)" step="0.01" min="0" registration={form.register('alert_soglia')} error={form.formState.errors.alert_soglia?.message} />
+        <NumberField label="Controllo ogni (secondi)" step="1" min="0" registration={form.register('alert_polling')} error={form.formState.errors.alert_polling?.message} />
+        <p className="mt-2 text-xs leading-5 text-slate-400">
+          Il backend somma la potenza istantanea di tutti i dispositivi Shelly che misurano (tipi PM e PM_RELAY) e invia una notifica ntfy quando la somma supera la soglia, ripetendola a ogni controllo in cui resta sopra.
+          Servono <span className="font-semibold text-slate-300">entrambi i valori maggiori di zero</span>: la soglia da sola, o l'intervallo da solo, non attivano nulla e i dispositivi non vengono interrogati.
+        </p>
+        <p role="status" className={`mt-2 text-xs leading-5 ${alertEnabled ? 'text-orange-300' : 'text-slate-400'}`}>
+          {alertEnabled
+            ? `Alert attivo: notifica sul topic ntfy configurato ogni ${alertPollingS} ${alertPollingS === 1 ? 'secondo' : 'secondi'} quando la somma supera ${alertSogliaW} W.`
+            : 'Alert disabilitato: nessuna notifica di consumo viene inviata.'}
+        </p>
+        <p className="mt-2 text-xs leading-5 text-slate-400">
+          Le notifiche di superamento soglia sono indipendenti da debug_mode e notifiche_errori_abilitate. Un dispositivo che non risponde viene escluso dalla somma, quindi il totale è sottostimato e l'alert può non scattare.
+        </p>
+      </section>
+
+      <section className="app-card">
         <h2 className="section-title">Meteo esterno</h2>
         <TextField label="URL servizio meteo" registration={form.register('meteo_esterno_url')} error={form.formState.errors.meteo_esterno_url?.message} />
         <NumberField label="Latitudine" step="0.0001" registration={form.register('meteo_esterno_latitudine')} error={form.formState.errors.meteo_esterno_latitudine?.message} />
@@ -241,11 +278,11 @@ export function ConfigPage() {
   );
 }
 
-function NumberField({ label, step, registration, error, disabled = false }: { label: string; step: string; registration: any; error?: string; disabled?: boolean }) {
+function NumberField({ label, step, min, registration, error, disabled = false }: { label: string; step: string; min?: string; registration: any; error?: string; disabled?: boolean }) {
   return (
     <label className="block border-b border-slate-700 py-3 last:border-0">
       <span className="field-label">{label}</span>
-      <input className="field-input mt-2" type="number" step={step} disabled={disabled} {...registration} />
+      <input className="field-input mt-2" type="number" step={step} min={min} disabled={disabled} {...registration} />
       <FieldError message={error} />
     </label>
   );

@@ -84,6 +84,73 @@
   .modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:24px;z-index:15;}
   .modal{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;width:100%;}
   .lock{font-size:40px;text-align:center;margin-bottom:6px;}
+
+  /* ===== Monitor consumi · UI domotica (barre colorate + barra TOTALE) ===== */
+  .dm-label{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0;}
+  .dm-hero{background:linear-gradient(180deg,#1e293b,#1a2436);border:1px solid var(--line);border-radius:18px;padding:14px 16px 12px;}
+  .dm-hero-top{display:flex;align-items:center;gap:14px;justify-content:space-between;}
+  .dm-hero-main{min-width:0;}
+  .dm-big{font-size:52px;font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--txt);}
+  .phone .dm-big{font-size:42px;}
+  .dm-unit{font-size:17px;font-weight:600;color:var(--muted);margin-left:7px;letter-spacing:0;}
+  .dm-sub{margin-top:6px;color:var(--muted);font-size:11.5px;}
+  .dm-ring{flex:none;}
+  .dm-totalbar{position:relative;height:18px;border-radius:999px;background:#0b1220;border:1px solid var(--line);overflow:hidden;}
+  .dm-totalbar-fill{height:100%;border-radius:999px;box-shadow:0 0 18px -2px currentColor;}
+  .dm-scale{position:relative;height:15px;margin-top:5px;}
+  .dm-scale i{position:absolute;top:0;width:1px;height:5px;background:#64748b;}
+  .dm-scale b{position:absolute;top:6px;font-size:9.5px;font-weight:500;color:var(--muted);transform:translateX(-50%);white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .dm-scale b.e{transform:translateX(-100%);}
+  .dm-over{margin-top:16px;font-size:10.5px;font-weight:600;color:var(--err);text-align:right;font-variant-numeric:tabular-nums;}
+  .dm-grad{height:6px;border-radius:999px;background:linear-gradient(90deg,#22c55e,hsl(60,85%,50%),#ef4444);}
+  .dm-legend{display:flex;align-items:center;gap:10px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);font-size:10.5px;color:var(--muted);}
+  .dm-legend .grad{flex:none;width:104px;}
+  .dm-legend .items{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-variant-numeric:tabular-nums;}
+  .dm-legend .arr{color:#cbd5e1;font-weight:700;}
+  .dm-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;}
+  .dm-head h2{margin:0;}
+  .dm-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid rgba(51,65,85,.65);}
+  .dm-row:first-child{border-top:none;}
+  .dm-ic{flex:none;width:32px;height:32px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--card2);border:1px solid var(--line);}
+  .dm-row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;}
+  .dm-row-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+  .dm-row-name{color:var(--txt);font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dm-row-val{flex:none;font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .dm-bar{display:block;height:7px;border-radius:999px;background:#0b1220;border:1px solid rgba(51,65,85,.9);overflow:hidden;}
+  .dm-bar-fill{display:block;height:100%;border-radius:999px;box-shadow:0 0 9px -1px currentColor;}
+  .dm-row-foot{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;}
+  .dm-live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--on);background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);border-radius:999px;padding:3px 9px;}
+  .dm-pulse{width:7px;height:7px;border-radius:50%;background:var(--on);box-shadow:0 0 0 0 rgba(34,197,94,.55);animation:dmPulse 1.9s infinite;}
+  @keyframes dmPulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+
+  /* ===== Nexus 7 orizzontale (960x600 CSS px, 7") ===== */
+  .tablet{width:984px;height:624px;background:#05070d;border-radius:20px;padding:12px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  .tablet .tscreen{width:960px;height:600px;background:var(--bg);border-radius:8px;overflow:hidden;display:flex;}
+  .t-rail{width:80px;flex:none;background:#1e293b;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:6px 0;}
+  .t-nav{flex:1;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--muted);}
+  .t-nav .ic{font-size:20px;line-height:24px;}
+  .t-nav.active{color:var(--accent);}
+  .t-main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .t-status{height:24px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px 0 20px;color:var(--txt);font-size:11px;font-weight:600;}
+  .t-head{flex:none;display:flex;align-items:center;gap:12px;padding:8px 20px;border-bottom:1px solid var(--line);}
+  .t-head h1{margin:0;font-size:18px;color:var(--txt);}
+  .t-tabs{display:flex;gap:6px;margin-left:8px;}
+  .t-head .health{margin-left:auto;}
+  .t-content{flex:1;overflow:auto;padding:12px 20px 16px;display:flex;flex-direction:column;gap:12px;}
+  .t-grid{display:grid;gap:12px;align-items:start;}
+  .t-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;}
+  .t-card h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 10px;}
+  .t-hero .dm-big{font-size:44px;}
+  .t-hero .dm-unit{font-size:15px;}
+  .t-hero .dm-legend .grad{width:76px;}
+  .t-read-note{margin-top:8px;font-size:10px;line-height:1.4;color:var(--muted);}
+  .t-read-note b{color:var(--txt);font-weight:600;}
+  .dm-upd{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;}
+  .dm-upd-row{display:flex;align-items:flex-end;gap:10px;}
+  .dm-upd-field{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;}
+  .dm-upd-field .input{width:100%;text-align:left;}
+  .caption.tab{margin-top:0;}
 </style>
 </head>
 <body>
@@ -113,6 +180,13 @@
           <div class="row"><span class="label">Notifiche errore abilitate</span><span class="toggle on"><span class="knob"></span></span></div>
           <div class="row"><span class="label">Debug mode</span><span class="toggle"><span class="knob"></span></span></div>
           <div class="row"><span class="label">Topic</span><span class="val">sliverd</span></div>
+        </div>
+        <div class="card">
+          <h2>Alert di consumo</h2>
+          <div class="row"><span class="label">Soglia di consumo</span><span class="input">1500.75 W</span></div>
+          <div class="row"><span class="label">Controllo ogni</span><span class="input">30 s</span></div>
+          <div class="hint">Somma dei power meter Shelly (PM, PM_RELAY): l'alert parte quando supera la soglia, a ogni controllo.</div>
+          <div class="row"><span class="badge">attivo</span><span class="hint" style="margin:0">Serve soglia <b>ed</b> intervallo maggiori di zero: uno dei due a zero disabilita l'alert.</span></div>
         </div>
         <div class="card">
           <h2>Meteo esterno</h2>
@@ -586,8 +660,8 @@
             <div style="width:100%">
               <div style="display:flex;align-items:center;justify-content:space-between">
                 <div>
-                  <div class="val" style="font-size:15px">Lavastoviglie e Cappa</div>
-                  <div class="sub">SNPM-001PCEU16 · gen. 3 · 192.168.1.12</div>
+                  <div class="val" style="font-size:15px">Lavatrice</div>
+                  <div class="sub">SNPM-001PCEU16 · gen. 3 · 192.168.1.31</div>
                 </div>
                 <span class="badge-shell">PM</span>
               </div>
@@ -610,59 +684,63 @@
   <div class="caption">9 — Area Dispositivi · Shelly (relay comandabili + power monitor)</div>
   </div>
 
-  <!-- 10. AREA DISPOSITIVI: MONITOR -->
+  <!-- 10. AREA DISPOSITIVI: MONITOR (UI domotica) -->
   <div class="wrap">
   <div class="phone" id="s-monitor">
     <div class="notch"></div>
     <div class="status"><span>9:41</span><span>5G &nbsp; 100%</span></div>
     <div class="screen">
-      <div class="appbar"><h1>Monitor consumi</h1><span class="health"><span class="dot up"></span></span></div>
+      <div class="appbar"><h1>Monitor consumi</h1><span class="health"><span class="dot up"></span>Backend UP</span></div>
       <div class="seg"><button class="seg-btn">🏠 Termostato</button><button class="seg-btn active">💡 Dispositivi</button></div>
       <div class="content">
-        <div class="note">Monitor del consumo istantaneo dei dispositivi con power meter (PM e Shelly 1PM): somma delle ultime letture, con colore che cambia in base alla potenza totale. Le misure non vengono registrate.</div>
-        <div class="card">
-          <h2>Aggiornamento</h2>
-          <div style="display:flex;align-items:flex-end;gap:10px">
-            <div style="flex:1">
-              <div class="label">Aggiorna ogni</div>
-              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-                <input class="input" style="min-width:0;flex:1;text-align:left" value="5">
-                <span class="sub">secondi</span>
-              </div>
+        <div class="note">Monitor del consumo istantaneo dei dispositivi con power meter (PM e Shelly 1PM): ogni barra è un dispositivo, la barra del riquadro in alto è il totale. Le misure sono lette in tempo reale e non vengono registrate.</div>
+        <div class="dm-hero">
+          <div class="dm-hero-top">
+            <div class="dm-hero-main">
+              <h2 class="dm-label">Totale consumo istantaneo</h2>
+              <div style="margin-top:8px"><span class="dm-big" id="dm-total-p">—</span><span class="dm-unit">watt</span></div>
+              <div class="dm-sub" id="dm-sub-p">somma delle ultime misure</div>
             </div>
-            <button class="btn sec" style="width:auto;padding:11px 18px;font-size:14px">Applica</button>
+            <div id="dm-ring-p"></div>
           </div>
-          <div class="hint">Intervallo di rilettura del consumo istantaneo (solo frontend, nessuna modifica alla config).</div>
-        </div>
-        <div class="card">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between">
-            <div>
-              <h2 style="margin:0">Totale consumo istantaneo</h2>
-              <div class="sub" style="margin-top:4px">Somma delle ultime misure dei 7 dispositivi con power meter · <b>5 s · aggiorna</b></div>
-            </div>
-          </div>
-          <div style="margin-top:12px;text-align:center;padding:14px 0;background:var(--card2);border:1px solid var(--line);border-radius:16px">
-            <span class="big" style="color:#ef4444">2844.0</span>
-            <span class="sub" style="display:block;margin-top:4px">watt totali</span>
+          <div style="margin-top:16px" id="dm-bar-p"></div>
+          <div class="dm-legend">
+            <span class="grad dm-grad"></span>
+            <span class="items">
+              <span><span style="color:#22c55e">●</span> &lt; 100 W</span>
+              <span class="arr">▬</span>
+              <span><span style="color:#f59e0b">●</span> verso arancione</span>
+              <span class="arr">▬</span>
+              <span><span style="color:#ef4444">●</span> ≥ 3000 W</span>
+            </span>
           </div>
           <div class="hint" style="text-align:right;margin-top:8px">ultimo aggiornamento 20/09/2026, 17:00:05</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;font-size:11px;color:var(--muted)">
-            <span><span style="color:#22c55e">●</span> &lt; 100 W</span>
-            <span>▬</span>
-            <span><span style="color:#f59e0b">●</span> verso arancione</span>
-            <span>▬</span>
-            <span><span style="color:#ef4444">●</span> ≥ 2000 W</span>
+          <div class="dm-upd">
+            <div class="dm-upd-row">
+              <label class="dm-upd-field">
+                <span class="label">Aggiorna ogni</span>
+                <span style="display:flex;align-items:center;gap:8px">
+                  <input class="input" value="5">
+                  <span class="sub">secondi</span>
+                </span>
+              </label>
+              <button class="btn sec" style="width:auto;padding:10px 16px;font-size:14px">Applica</button>
+              <span class="dm-live" style="align-self:center"><span class="dm-pulse"></span>LIVE</span>
+            </div>
+            <div class="hint">Rilettura live sui dispositivi: nessuna modifica alla configurazione.</div>
           </div>
         </div>
         <div class="card">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between">
-            <h2 style="margin:0">Dettaglio per dispositivo</h2>
-            <span class="badge-shell">7 con misure</span>
-          </div>
-          <div style="margin-top:12px">
-            <svg id="monitor-bars" width="100%" height="150" viewBox="0 0 320 150"></svg>
-          </div>
-          <div class="kpi" style="grid-template-columns:1fr;margin-top:10px" id="monitor-list"></div>
+          <div class="dm-head"><h2>Dispositivi</h2><span class="badge-shell">7 con misure</span></div>
+          <div id="dm-rows-p"></div>
+        </div>
+        <div class="card">
+          <h2>Come si legge</h2>
+          <div class="row" style="padding-top:0"><span class="label">Barra in alto</span><span class="val">totale casa</span></div>
+          <div class="row"><span class="label">Lunghezza barra</span><span class="val">scala fissa 0–3000 W</span></div>
+          <div class="row"><span class="label">Colore barra</span><span class="val">potenza del dispositivo</span></div>
+          <div class="row"><span class="label">Valore a destra</span><span class="val">watt e quota</span></div>
+          <div class="hint">Oltre 3000 W la barra satura e passa al rosso: la quota resta leggibile a destra.</div>
         </div>
       </div>
       <div class="tabbar">
@@ -671,7 +749,71 @@
       </div>
     </div>
   </div>
-  <div class="caption">10 — Area Dispositivi · Monitor (consumo istantaneo)</div>
+  <div class="caption">10 — Monitor consumi · UI domotica (telefono, verticale)</div>
+  </div>
+
+  <!-- 11. MONITOR CONSUMI SU NEXUS 7 ORIZZONTALE -->
+  <div class="wrap">
+  <div class="tablet" id="s-monitor-tab">
+    <div class="tscreen">
+      <aside class="t-rail">
+        <div class="t-nav"><span class="ic">💡</span>Dispositivi</div>
+        <div class="t-nav active"><span class="ic">📊</span>Monitor</div>
+      </aside>
+      <div class="t-main">
+        <div class="t-status"><span>9:41</span><span>🔋 100% &nbsp; 5G &nbsp; Wi-Fi</span></div>
+        <div class="t-head">
+          <h1>Monitor consumi</h1>
+          <div class="t-tabs"><button class="seg-btn">🏠 Termostato</button><button class="seg-btn active">💡 Dispositivi</button></div>
+          <span class="health"><span class="dot up"></span>Backend UP</span>
+        </div>
+        <div class="t-content">
+          <div class="t-grid" style="grid-template-columns:352px minmax(0,1fr)">
+            <div class="dm-hero t-hero">
+              <div class="dm-hero-top">
+                <div class="dm-hero-main">
+                  <h2 class="dm-label">Totale consumo istantaneo</h2>
+                  <div style="margin-top:8px"><span class="dm-big" id="dm-total-l">—</span><span class="dm-unit">watt</span></div>
+                  <div class="dm-sub" id="dm-sub-l">somma delle ultime misure</div>
+                </div>
+                <div id="dm-ring-l"></div>
+              </div>
+              <div style="margin-top:14px" id="dm-bar-l"></div>
+              <div class="dm-legend">
+                <span class="grad dm-grad"></span>
+                <span class="items">
+                  <span><span style="color:#22c55e">●</span> &lt; 100 W</span>
+                  <span><span style="color:#f59e0b">●</span> verso arancione</span>
+                  <span><span style="color:#ef4444">●</span> ≥ 3000 W</span>
+                </span>
+              </div>
+              <div class="hint" style="text-align:right;margin-top:8px">ultimo aggiornamento 20/09/2026, 17:00:05</div>
+              <div class="t-read-note"><b>Barra in alto</b> = totale casa · <b>scala</b> fissa 0–3000 W · <b>colore</b> = potenza del dispositivo.</div>
+              <div class="dm-upd">
+                <div class="dm-upd-row">
+                  <label class="dm-upd-field">
+                    <span class="label">Aggiorna ogni</span>
+                    <span style="display:flex;align-items:center;gap:8px">
+                      <input class="input" value="5">
+                      <span class="sub">secondi</span>
+                    </span>
+                  </label>
+                  <button class="btn sec" style="width:auto;padding:9px 13px;font-size:13px">Applica</button>
+                  <span class="dm-live" style="align-self:center"><span class="dm-pulse"></span>LIVE</span>
+                </div>
+                <div class="hint">Rilettura live sui dispositivi: nessuna modifica alla configurazione.</div>
+              </div>
+            </div>
+            <div class="t-card">
+              <div class="dm-head"><h2>Dispositivi</h2><span class="badge-shell">7 con misure</span></div>
+              <div id="dm-rows-l"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">11 — Monitor consumi · UI domotica su Nexus 7 in orizzontale (960×600)</div>
   </div>
 
 </div>
@@ -706,63 +848,100 @@
 })();
 </script>
 <script>
-// Genera le barre del monitor del consumo istantaneo dei dispositivi con power meter
+// Monitor del consumo istantaneo: UI domotica con barre colorate + barra del TOTALE.
+// Stessa scala di colori del grafico precedente (verde < 100 W -> arancione -> rosso >= 3000 W).
 (function(){
-  const s = document.getElementById('monitor-bars');
-  const list = document.getElementById('monitor-list');
-  if(!s || !list) return;
+  const MAX = 3000;
   // w = potenza in watt (null = misura non disponibile), v = tensione, a = corrente
   const pm = [
-    {name:'Frigo e Forno', w:45, v:229.8, a:0.197},
-    {name:'Top Cucina', w:320, v:230.4, a:1.39},
-    {name:'Lavanderia', w:7, v:230.2, a:0.03},
-    {name:'Shelly 1PM', w:180, v:229.8, a:0.78},
-    {name:'Modem', w:12, v:231.0, a:0.05},
-    {name:'Tv Cucina', w:180, v:229.5, a:0.78},
-    {name:'Lavastoviglie e Cappa', w:2100, v:230.1, a:9.13}
+    {icon:'🧊',  name:'Frigo e Forno',            w:45,   v:229.8, a:0.197},
+    {icon:'🍳',  name:'Top Cucina',               w:320,  v:230.4, a:1.39},
+    {icon:'🧺',  name:'Lavanderia',               w:7,    v:230.2, a:0.03},
+    {icon:'💡',  name:'Shelly 1PM',               w:180,  v:229.8, a:0.78},
+    {icon:'📶',  name:'Modem',                    w:12,   v:231.0, a:0.05},
+    {icon:'📺',  name:'Tv Cucina',                w:180,  v:229.5, a:0.78},
+    {icon:'🍽️', name:'Lavastoviglie e Cappa',    w:2100, v:230.1, a:9.13}
   ];
-  const MAX = 2000, base = 130, maxH = 110, x0 = 6, step = 42, barW = 26;
   function color(w){
     if(w == null) return '#334155';
     if(w <= 100) return '#22c55e';
-    if(w >= 2000) return '#ef4444';
-    const t = (w-100)/1900;
+    if(w >= MAX) return '#ef4444';
+    const t = (w-100)/(MAX-100);
     const h = Math.round(120 - 120*t);
     return 'hsl('+h+', 85%, 50%)';
   }
-  function num(v, digits){
-    return v == null ? '\u2014' : v.toFixed(digits);
+  const measured = pm.filter(function(p){ return p.w != null; });
+  const total = measured.reduce(function(a,p){ return a + p.w; }, 0);
+  const totalColor = color(total);
+  const totalShare = Math.round(total / MAX * 100);
+
+  function ring(){
+    const r = 34, C = 2*Math.PI*r;
+    const frac = Math.min(1, total / MAX);
+    return '<svg class="dm-ring" width="88" height="88" viewBox="0 0 88 88">'+
+      '<circle cx="44" cy="44" r="'+r+'" fill="none" stroke="#0b1220" stroke-width="10"/>'+
+      '<circle cx="44" cy="44" r="'+r+'" fill="none" stroke="'+totalColor+'" stroke-width="10" stroke-linecap="round"'+
+        ' stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+(C*(1-frac)).toFixed(1)+'"'+
+        ' transform="rotate(-90 44 44)" style="filter:drop-shadow(0 0 5px '+totalColor+')"/>'+
+      '<text x="44" y="43" text-anchor="middle" fill="'+totalColor+'" font-size="20" font-weight="700">'+totalShare+'%</text>'+
+      '<text x="44" y="59" text-anchor="middle" fill="#94a3b8" font-size="9">scala '+MAX+' W</text>'+
+    '</svg>';
   }
-  let html = '<line x1="10" y1="'+base+'" x2="312" y2="'+base+'" stroke="#334155" stroke-width="1"/>' +
-             '<line x1="10" y1="'+(base-55)+'" x2="312" y2="'+(base-55)+'" stroke="#334155" stroke-width="1" stroke-dasharray="3 3"/>';
-  let listHtml = '';
-  pm.forEach(function(p, i){
-    const h = p.w == null ? 0 : Math.min(p.w, MAX)/MAX*maxH;
-    const x = x0 + i*step;
-    const y = base - h;
-    const c = color(p.w);
-    if(h > 0){
-      html += '<rect x="'+x+'" y="'+y.toFixed(1)+'" width="'+barW+'" height="'+h.toFixed(1)+'" rx="5" fill="'+c+'"/>';
-    } else {
-      html += '<rect x="'+x+'" y="'+(base-1)+'" width="'+barW+'" height="2" rx="1" fill="'+c+'"/>';
-    }
-    const label = p.w == null ? '\u2014' : Math.round(p.w)+'W';
-    html += '<text x="'+(x+barW/2)+'" y="'+(y-4)+'" fill="'+(p.w>=2000 ? '#ef4444' : '#94a3b8')+'" font-size="9" text-anchor="middle">'+label+'</text>';
-    html += '<text x="'+(x+barW/2)+'" y="'+(base+14)+'" fill="#94a3b8" font-size="9" text-anchor="middle">'+p.name.split(' ')[0]+'</text>';
-    listHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
-      '<span style="display:flex;align-items:center;gap:6px;min-width:0">' +
-        '<span style="width:9px;height:9px;border-radius:50%;background:'+c+';display:inline-block;flex:none"></span>' +
-        '<span style="min-width:0">' +
-          '<span style="display:block;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.name+'</span>' +
-          '<span style="display:block;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+num(p.v,1)+' V \u00b7 '+num(p.a,2)+' A</span>' +
-        '</span>' +
-      '</span>' +
-      '<span style="color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;flex:none">'+num(p.w,1)+' W</span>' +
-    '</div>';
+
+  function totalBar(){
+    const frac = Math.min(100, total / MAX * 100);
+    return '<div class="dm-totalbar">'+
+             '<div class="dm-totalbar-fill" style="width:'+frac.toFixed(1)+'%;background:'+totalColor+';color:'+totalColor+'"></div>'+
+           '</div>'+
+           '<div class="dm-scale">'+
+             '<i style="left:3.3333%"></i><b style="left:3.3333%">100 W</b>'+
+             '<i style="left:50%"></i>'+
+             '<i style="left:100%"></i><b class="e" style="left:100%">'+MAX+' W</b>'+
+           '</div>'+
+           (total > MAX ? '<div class="dm-over">▲ '+total.toFixed(1)+' W · '+totalShare+'% della scala (barra saturata)</div>' : '');
+  }
+
+  function rows(){
+    return pm.map(function(p){
+      const c = color(p.w);
+      const len = p.w == null ? 0 : Math.min(100, p.w / MAX * 100);
+      const share = p.w == null || total === 0 ? null : Math.round(p.w / total * 100);
+      const val = p.w == null ? '—' : p.w.toFixed(1) + ' W';
+      const meas = p.w == null ? 'misura non disponibile'
+        : p.v.toFixed(1) + ' V · ' + p.a.toFixed(2) + ' A';
+      return '<div class="dm-row">'+
+        '<span class="dm-ic">'+p.icon+'</span>'+
+        '<span class="dm-row-main">'+
+          '<span class="dm-row-top">'+
+            '<span class="dm-row-name">'+p.name+'</span>'+
+            '<span class="dm-row-val" style="color:'+c+'">'+val+'</span>'+
+          '</span>'+
+          '<span class="dm-bar">'+
+            '<span class="dm-bar-fill" style="width:'+len.toFixed(1)+'%;background:'+c+';color:'+c+'"></span>'+
+          '</span>'+
+          '<span class="dm-row-foot"><span>'+meas+'</span><span>'+(share == null ? '—' : share+'% del totale')+'</span></span>'+
+        '</span>'+
+      '</div>';
+    }).join('');
+  }
+
+  const rowsHtml = rows();
+  ['p', 'l'].forEach(function(v){
+    const totalEl = document.getElementById('dm-total-'+v);
+    const subEl = document.getElementById('dm-sub-'+v);
+    const ringEl = document.getElementById('dm-ring-'+v);
+    const barEl = document.getElementById('dm-bar-'+v);
+    const listEl = document.getElementById('dm-rows-'+v);
+    if(!totalEl) return;
+    totalEl.textContent = total.toFixed(1);
+    totalEl.style.color = totalColor;
+    subEl.textContent = 'somma delle ultime misure di '+measured.length+' dispositivi con power meter · 5 s · aggiorna';
+    ringEl.innerHTML = ring();
+    barEl.innerHTML = totalBar();
+    listEl.innerHTML = rowsHtml;
   });
-  s.innerHTML = html;
-  list.innerHTML = listHtml;
 })();
 </script>
+
 </body>
 </html>

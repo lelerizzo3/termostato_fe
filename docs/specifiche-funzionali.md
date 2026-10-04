@@ -165,6 +165,46 @@ Il fuso deve essere un identificatore valido del database IANA, per esempio `Eur
 
 I timestamp persistiti nei log e i parametri data di `GET /log` restano espressi in UTC; questa scelta non modifica l'interpretazione locale degli intervalli del calendario.
 
+### 3.10 Alert di consumo (`alert_soglia`, `alert_polling`)
+
+| Parametro | Tipo | Default | Descrizione |
+|---|---|---|---|
+| `alert_soglia` | decimale (watt) | `0` | Somma della potenza istantanea dei dispositivi Shelly che misurano oltre la quale inviare l'alert |
+| `alert_polling` | intero (secondi) | `0` | Ogni quanti secondi controllare la somma |
+
+Il sistema somma la potenza istantanea (in watt) di **tutti i dispositivi Shelly che effettuano misurazioni**, cioè i tipi `PM` e `PM_RELAY`, e invia un alert tramite ntfy (sul topic già configurato) quando la somma supera la soglia.
+
+- L'alert scatta quando la somma è **strettamente maggiore** della soglia: con somma esattamente pari non viene inviato nulla.
+- Viene **reinviato a ogni giro di controllo** in cui la somma resta sopra soglia: non esiste un blocco anti-ripetizione. Il rientro sotto soglia è implicito nella cessazione delle notifiche.
+- La funzione è **disabilitata per default** e va attivata esplicitamente dall'utente.
+- La frequenza di controllo `alert_polling` è **indipendente** da `intervallo_polling_secondi`, che resta dedicato al ciclo della caldaia; una modifica al valore non accorcia retroattivamente un controllo già pianificato.
+
+#### 3.10.1 Regola di attivazione
+
+La funzione è attiva **solo se entrambi i valori sono maggiori di zero**:
+
+```
+alert attivo  ⟺  alert_soglia > 0  AND  alert_polling > 0
+```
+
+Se uno dei due è `0` oppure `null` (assente) la funzione è **disabilitata**: nessun dispositivo Shelly viene interrogato e non viene inviata alcuna notifica. `alert_soglia` da sola **non basta**.
+
+#### 3.10.2 Validazione e persistenza
+
+- Entrambi i valori devono essere `≥ 0`; un valore negativo è rifiutato con `400`.
+- `alert_soglia` accetta un valore decimale (es. `1500.75`); `alert_polling` è un intero e una parte decimale viene **troncata** senza errore (`2.5` → `2`).
+- `null` viene normalizzato a `0` (funzione disabilitata).
+- Essendo `PUT /config` una sostituzione completa, **i due campi devono essere sempre reinviati**: se omessi vengono azzerati senza restituire errore, disattivando l'alert silenziosamente.
+- Un backend aggiornato espone i due campi anche quando il file di configurazione su disco è precedente alla funzione (i valori mancanti vengono completati con `0` e riscritti, senza perdere gli altri).
+- La modifica tramite `PUT /config` ha effetto immediato, senza riavvio (RNF-01).
+
+#### 3.10.3 Note operative
+
+- Le notifiche di superamento soglia sono **indipendenti** da `debug_mode` e da `notifiche_errori_abilitate`: superare la soglia è un evento, non un messaggio informativo.
+- Un dispositivo irraggiungibile viene scartato e non annulla la somma degli altri: il totale è **sottostimato** della quota non letta e un alert può quindi mancare anche con consumo reale sopra soglia.
+- Il profilo mock **non simula** i dispositivi Shelly: in un ambiente di test senza reale la somma risulterà `0` o sottostimata e l'alert non scatterà.
+- Non esistono storico, né endpoint dedicati: `GET /config` non espone l'ultima somma, l'esito dell'ultimo controllo o lo stato dell'ultimo alert.
+
 ---
 
 ## 4. Integrazioni esterne
@@ -343,8 +383,8 @@ Se non è attivo alcun override e non esiste un intervallo calendario attivo, `t
 
 | Metodo | Endpoint | Descrizione |
 |---|---|---|
-| `GET` | `/config` | Restituisce la configurazione corrente del sistema (tutti i parametri) |
-| `PUT` | `/config` | Aggiorna la configurazione del sistema |
+| `GET` | `/config` | Restituisce la configurazione corrente del sistema (tutti i parametri, compresi `alert_soglia` e `alert_polling`) |
+| `PUT` | `/config` | Aggiorna la configurazione del sistema (sostituzione completa: i campi omessi, incluso `alert_soglia`/`alert_polling`, vengono azzerati) |
 | `GET` | `/config/calendario` | Restituisce il calendario settimanale |
 | `PUT` | `/config/calendario` | Aggiorna il calendario settimanale |
 
@@ -424,7 +464,7 @@ Codici di errore aggiunti:
 - `404` — id dispositivo non riconosciuto;
 - `500` — dispositivo irraggiungibile o risposta non interpretabile.
 
-Non esistono persistenza delle misure, scheduler di polling dedicato, né i relativi parametri di configurazione (`intervallo-polling-consumi-secondi`, `retention-consumi-giorni`, `logging-pm-abilitato`): sono rimossi da `GET /config` e rifiutati da `PUT /config`.
+Non esistono persistenza delle misure, scheduler di polling dedicato, né i relativi parametri di configurazione (`intervallo-polling-consumi-secondi`, `retention-consumi-giorni`, `logging-pm-abilitato`): sono rimossi da `GET /config` e rifiutati da `PUT /config`. La somma delle misure resta calcolata dal backend esclusivamente per l'alert di consumo di §3.10, con controllo ogni `alert_polling` secondi e senza alcuna persistenza.
 
 ---
 
@@ -515,6 +555,10 @@ Lo stato corrente della caldaia utilizzato nella logica di isteresi (zona neutra
 | RF-54 | L'applicazione espone `POST /shelly/relay/{id}/on` e `POST /shelly/relay/{id}/off` che comandano il relè di un dispositivo `RELAY` o `PM_RELAY` e restituiscono lo stato riletto con la conferma esplicita dell'esecuzione: `esito` (true = dispositivo ha confermato il comando) e `stato_precedente` (stato prima del comando, valorizzato per i Gen 3, `null` per i Gen 1) |
 | RF-55 | Il backend non registra le misure dei dispositivi Shelly: non esistono storico, scheduler di polling, retention né i corrispondenti parametri di configurazione |
 | RF-56 | Gli endpoint `/shelly/*` funzionano identicamente anche nel profilo mock: solo sensore di temperatura/umidità e relay del termostato sono simulati, i dispositivi Shelly restano reali e protetti da `X-API-Key` |
+| RF-57 | La configurazione espone `alert_soglia` (soglia in watt sulla somma della potenza istantanea dei dispositivi Shelly `PM`/`PM_RELAY`) e `alert_polling` (intervallo di controllo in secondi), entrambi con default `0` e validazione `≥ 0` |
+| RF-58 | L'alert di consumo è attivo solo se `alert_soglia > 0` e `alert_polling > 0`; con uno dei due a zero nessun dispositivo viene interrogato e nessuna notifica viene inviata |
+| RF-59 | Quando la somma della potenza dei dispositivi che misurano è strettamente maggiore di `alert_soglia`, il sistema invia un alert sul topic ntfy configurato, ripetuto a ogni giro di controllio in cui la somma resta sopra soglia; i dispositivi irraggiungibili vengono esclusi dalla somma |
+| RF-60 | Le notifiche di superamento soglia sono inviate indipendentemente da `debug_mode` e `notifiche_errori_abilitate`; `PUT /config` rifiuta con `400` i valori negativi dei due campi e tronca la parte decimale di `alert_polling` |
 
 ---
 

@@ -42,6 +42,7 @@ vi.mock('@tanstack/react-query', () => ({
 
 beforeEach(() => {
   statoPerId.shelly1pm = { ...statoPerId.shelly1pm, potenza_w: null, tensione_v: null, corrente_a: null };
+  statoPerId.forno = { ...statoPerId.forno, potenza_w: 2100 };
 });
 
 function renderPage() {
@@ -57,16 +58,40 @@ describe('ShellyMonitorPage', () => {
     renderPage();
     expect(screen.getByText('Totale consumo istantaneo')).toBeInTheDocument();
     expect(screen.getByText('2145.2')).toBeInTheDocument();
-    expect(screen.getByText('watt totali')).toBeInTheDocument();
-    expect(screen.getByText('≥ 2000 W')).toBeInTheDocument();
+    expect(screen.getByText('watt')).toBeInTheDocument();
+    expect(screen.getByText('somma delle ultime misure di 2 dispositivi con power meter · 5 s · aggiorna')).toBeInTheDocument();
   });
 
-  it('mostra il dettaglio con le ultime misure dei dispositivi con power meter', () => {
+  it('mostra la barra del totale sulla scala 0-3000 W con i valori di soglia', () => {
     renderPage();
-    expect(screen.getByText('Dettaglio per dispositivo')).toBeInTheDocument();
+    expect(screen.getByLabelText('Totale 2145.2 watt, 72% della scala 0-3000 watt')).toBeInTheDocument();
+    expect(screen.getByLabelText('Totale al 72% della scala 0-3000 watt')).toBeInTheDocument();
+    expect(screen.getByText('100 W')).toBeInTheDocument();
+    expect(screen.getByText('3000 W')).toBeInTheDocument();
+    expect(screen.getByText('≥ 3000 W')).toBeInTheDocument();
+    expect(screen.getByText('verso arancione')).toBeInTheDocument();
+  });
+
+  it('segnala la saturazione della scala quando il totale supera 3000 W', () => {
+    statoPerId.forno = { ...statoPerId.forno, potenza_w: 3500 };
+    renderPage();
+    expect(screen.getByText('▲ 3545.2 W · 118% della scala (barra saturata)')).toBeInTheDocument();
+  });
+
+  it('mostra una riga per dispositivo con barra colorata, watt e quota sul totale', () => {
+    const { container } = renderPage();
+    expect(screen.getByText('Dispositivi')).toBeInTheDocument();
     expect(screen.getByText('45.2 W')).toBeInTheDocument();
     expect(screen.getByText('2100.0 W')).toBeInTheDocument();
     expect(screen.getByText('3 con misure')).toBeInTheDocument();
+
+    expect(container.querySelector<HTMLElement>('[data-bar-fill="frigo"]')?.style.width).toBe('1.5%');
+    expect(container.querySelector<HTMLElement>('[data-bar-fill="forno"]')?.style.width).toBe('70%');
+    expect(container.querySelector<HTMLElement>('[data-bar-fill="shelly1pm"]')?.style.width).toBe('0%');
+
+    const rigaForno = container.querySelector<HTMLElement>('[data-monitor-row="forno"]');
+    expect(rigaForno?.textContent).toContain('230.1 V · 9.13 A');
+    expect(rigaForno?.textContent).toContain('98% del totale');
     expect(screen.getByLabelText('Intervallo di aggiornamento in secondi')).toHaveValue(5);
   });
 
@@ -77,10 +102,11 @@ describe('ShellyMonitorPage', () => {
   });
 
   it('esclude dal totale le misure null invece di contarle come 0', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getByText('2145.2')).toBeInTheDocument();
-    const rigaPmRelay = screen.getByText('Shelly 1PM').closest('div');
-    expect(rigaPmRelay?.textContent).toContain('— · —');
+    const rigaPmRelay = container.querySelector<HTMLElement>('[data-monitor-row="shelly1pm"]');
+    expect(rigaPmRelay?.textContent).toContain('misura non disponibile');
+    expect(rigaPmRelay?.textContent).toContain('—');
   });
 
   it('valida l intervallo: errore per valori non validi, applica quelli validi', () => {
@@ -95,7 +121,7 @@ describe('ShellyMonitorPage', () => {
     fireEvent.change(input, { target: { value: '10' } });
     fireEvent.submit(form);
     expect(screen.queryByText('Il valore deve essere un numero intero di almeno 1 secondo.')).not.toBeInTheDocument();
-    expect(screen.getByText('10 s · aggiorna')).toBeInTheDocument();
+    expect(screen.getByText('somma delle ultime misure di 2 dispositivi con power meter · 10 s · aggiorna')).toBeInTheDocument();
     expect(input).toHaveValue(10);
   });
 });
@@ -105,18 +131,20 @@ describe('ShellyMonitorPage — orientamento del grafico', () => {
     vi.unstubAllGlobals();
   });
 
-  it('mostra le barre orizzontali su tablet 7 pollici in orizzontale', () => {
+  it('mostra le righe con barre in orizzontale su tablet 7 pollici in orizzontale', () => {
     mockMatchMedia(true);
     renderPage();
     expect(document.querySelector('[data-chart-layout="horizontal"]')).not.toBeNull();
     expect(screen.getByText('2145.2')).toBeInTheDocument();
     expect(screen.getByText('2100.0 W')).toBeInTheDocument();
+    expect(screen.getByText('Come si legge')).toBeInTheDocument();
   });
 
-  it('mantiene le barre verticali sugli smartphone', () => {
+  it('mantiene il layout a colonna singola sugli smartphone', () => {
     mockMatchMedia(false);
     renderPage();
     expect(document.querySelector('[data-chart-layout="vertical"]')).not.toBeNull();
     expect(document.querySelector('[data-chart-layout="horizontal"]')).toBeNull();
+    expect(screen.getByText('Come si legge').closest('section')?.className).toContain('land:hidden');
   });
 });

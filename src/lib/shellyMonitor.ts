@@ -1,4 +1,4 @@
-export const MONITOR_MAX_W = 2000;
+export const MONITOR_MAX_W = 3000;
 export const MONITOR_GREEN_W = 100;
 
 export function monitorColor(watts: number | null | undefined): string {
@@ -10,7 +10,7 @@ export function monitorColor(watts: number | null | undefined): string {
   return `hsl(${hue}, 85%, 50%)`;
 }
 
-export function barHeightWatts(watts: number | null | undefined): number {
-  if (watts === null || watts === undefined) return 0;
-  return Math.min(watts, MONITOR_MAX_W);
+export function monitorBarPercent(watts: number | null | undefined): number {
+  if (watts === null || watts === undefined || watts <= 0) return 0;
+  return Math.min(100, (watts / MONITOR_MAX_W) * 100);
 }
