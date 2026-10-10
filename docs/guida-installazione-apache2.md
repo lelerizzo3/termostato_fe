@@ -202,7 +202,7 @@ RedirectMatch 301 ^/termostato$ /termostato/
 </Location>
 
 # index, manifest e service worker non devono restare cachati a lungo.
-<LocationMatch "^/termostato/(index\\.html|sw\\.js|manifest\\.webmanifest)$">
+<LocationMatch "^/termostato/(index\\.html|sw\\.js|manifest\\.webmanifest|pwa-.*\\.png)$">
     Header always set Cache-Control "no-cache"
 </LocationMatch>
 ```

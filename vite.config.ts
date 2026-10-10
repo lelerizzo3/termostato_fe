@@ -10,11 +10,13 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: [
         'pwa-icon.svg',
+        'pwa-120.png',
         'pwa-152.png',
         'pwa-167.png',
         'pwa-180.png',
         'pwa-192.png',
-        'pwa-512.png'
+        'pwa-512.png',
+        'pwa-1024.png'
       ],
       manifest: {
         name: 'Termostato intelligente',
@@ -28,11 +30,12 @@ export default defineConfig({
         icons: [
           { src: '/termostato/pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/termostato/pwa-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/termostato/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          { src: '/termostato/pwa-1024.png', sizes: '1024x1024', type: 'image/png', purpose: 'any' },
+          { src: '/termostato/pwa-1024.png', sizes: '1024x1024', type: 'image/png', purpose: 'maskable' }
         ]
       },
       workbox: {
-        navigateFallbackDenylist: [/^\/termostato\/api\//],
+        navigateFallbackDenylist: [/^\/termostato\/api\//, /\/termostato\/[^/]*\.(?:png|svg|ico|webmanifest|css|js)$/],
         runtimeCaching: [
           {
             urlPattern: /\/termostato\/api\/.*/,
