@@ -121,8 +121,8 @@ Alias /termostato /var/www/termostato-fe
 </Directory>
 
 <Location /termostato/api/>
-    ProxyPass        http://127.0.0.1:8080/
-    ProxyPassReverse http://127.0.0.1:8080/
+    ProxyPass        http://192.168.1.17:8080/
+    ProxyPassReverse http://192.168.1.17:8080/
 </Location>
 ```
 

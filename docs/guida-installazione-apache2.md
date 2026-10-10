@@ -16,7 +16,7 @@ sviluppo o nella pipeline di build.
 Sul server Linux devono essere già disponibili:
 
 - Apache2 con VirtualHost HTTPS funzionante per `sliverd.ddns.net`;
-- backend Termostato in esecuzione su `127.0.0.1:8080`;
+- backend Termostato in esecuzione su `192.168.1.17:8080`;
 - almeno una API-key configurata nel backend (`api_keys` non vuoto);
 - accesso SSH con privilegi `sudo`;
 - moduli Apache `proxy`, `proxy_http`, `headers` e `rewrite`.
@@ -26,7 +26,7 @@ Il backend deve rispondere direttamente, dal server, a una richiesta simile:
 ```bash
 curl -i \\
   -H "X-API-Key: LA_TUA_API_KEY" \\
-  http://127.0.0.1:8080/actuator/health
+  http://192.168.1.17:8080/actuator/health
 ```
 
 La risposta attesa è HTTP `200` con stato applicativo `UP`.
@@ -161,8 +161,8 @@ Non modificare il `DocumentRoot` della home già pubblicata.
 
 # Deve precedere l'Alias statico.
 # /termostato/api/stato viene inoltrato al backend come /stato.
-ProxyPass        /termostato/api/ http://127.0.0.1:8080/
-ProxyPassReverse /termostato/api/ http://127.0.0.1:8080/
+ProxyPass        /termostato/api/ http://192.168.1.17:8080/
+ProxyPassReverse /termostato/api/ http://192.168.1.17:8080/
 
 # Directory dei file statici compilati
 Alias /termostato/ /var/www/termostato-fe/
@@ -348,11 +348,11 @@ La richiesta viene intercettata dall'Alias/fallback invece che dal proxy.
 Verificare che questi blocchi siano presenti nel VirtualHost:
 
 ```apache
-ProxyPass        /termostato/api/ http://127.0.0.1:8080/
-ProxyPassReverse /termostato/api/ http://127.0.0.1:8080/
+ProxyPass        /termostato/api/ http://192.168.1.17:8080/
+ProxyPassReverse /termostato/api/ http://192.168.1.17:8080/
 ```
 
-Verificare inoltre che il backend sia in ascolto su `127.0.0.1:8080`.
+Verificare inoltre che il backend sia in ascolto su `192.168.1.17:8080`.
 
 ### La API restituisce sempre 401
 

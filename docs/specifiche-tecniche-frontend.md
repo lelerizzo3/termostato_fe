@@ -106,7 +106,7 @@ flowchart TD
     UI --> RQ --> API
   end
   API -->|"HTTPS + X-API-Key<br/>GET /termostato/api/..."| APACHE["Apache2 (VirtualHost esistente)<br/>Alias /termostato + proxy /termostato/api"]
-  APACHE -->|"localhost:8080"| BE[Backend Termostato :8080]
+  APACHE -->|"192.168.1.17:8080"| BE[Backend Termostato :8080]
 ```
 
 ### 4.1 Struttura delle cartelle proposta
@@ -735,8 +735,8 @@ Alias /termostato /var/www/termostato-fe
 # Nota: ProxyPass va posto PRIMA dell'Alias nella valutazione; in pratica
 # dichiararlo prima evita che l'Alias catturi /termostato/api.
 <Location /termostato/api/>
-    ProxyPass        http://127.0.0.1:8080/
-    ProxyPassReverse http://127.0.0.1:8080/
+    ProxyPass        http://192.168.1.17:8080/
+    ProxyPassReverse http://192.168.1.17:8080/
 </Location>
 
 # Header di sicurezza (limitati a questa sotto-cartella)
