@@ -8,7 +8,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['pwa-icon.svg', 'pwa-192.png', 'pwa-512.png'],
+      includeAssets: [
+        'pwa-icon.svg',
+        'pwa-152.png',
+        'pwa-167.png',
+        'pwa-180.png',
+        'pwa-192.png',
+        'pwa-512.png'
+      ],
       manifest: {
         name: 'Termostato intelligente',
         short_name: 'Termostato',

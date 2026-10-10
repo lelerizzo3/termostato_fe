@@ -20,13 +20,13 @@ const thermostatNav: NavItem[] = [
 ];
 
 const shellyNav: NavItem[] = [
-  { to: '/shelly', label: 'Dispositivi', icon: '💡' },
-  { to: '/shelly/monitor', label: 'Monitor', icon: '📊' }
+  { to: '/shelly/monitor', label: 'Monitor', icon: '📊' },
+  { to: '/shelly', label: 'Dispositivi', icon: '💡' }
 ];
 
 const areaTabs: { area: Area; label: string; to: string }[] = [
   { area: 'termostato', label: '🏠 Termostato', to: '/stato' },
-  { area: 'shelly', label: '💡 Dispositivi', to: '/shelly' }
+  { area: 'shelly', label: '💡 Dispositivi', to: '/shelly/monitor' }
 ];
 
 const titles: Record<string, string> = {

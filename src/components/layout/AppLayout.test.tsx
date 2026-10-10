@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mockMatchMedia } from '../../test/matchMedia';
@@ -24,14 +24,22 @@ describe('AppLayout — tab dell area dispositivi', () => {
     const tabs = screen.getAllByRole('tab');
     expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(['🏠 Termostato', '💡 Dispositivi']);
   });
+
+  it('apre Monitor di default quando si seleziona il tab Dispositivi', () => {
+    renderLayout('/stato');
+    fireEvent.click(screen.getByRole('tab', { name: '💡 Dispositivi' }));
+    const nav = screen.getByRole('navigation', { name: 'Navigazione principale' });
+    const attiva = nav.querySelector('a[aria-current="page"]');
+    expect(attiva?.getAttribute('href')).toBe('/shelly/monitor');
+  });
 });
 
 describe('AppLayout — bottom navigation', () => {
-  it('mostra le due sole pagine dell area dispositivi', () => {
+  it('mostra le due sole pagine dell area dispositivi con Monitor per prima', () => {
     renderLayout('/shelly');
     const nav = screen.getByRole('navigation', { name: 'Navigazione principale' });
-    expect(nav.textContent).toContain('Dispositivi');
-    expect(nav.textContent).toContain('Monitor');
+    const links = Array.from(nav.querySelectorAll('a')).map((a) => a.getAttribute('href'));
+    expect(links).toEqual(['/shelly/monitor', '/shelly']);
     expect(nav.textContent).not.toContain('Consumi');
   });
 

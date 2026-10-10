@@ -22,13 +22,13 @@ export function StatusPage() {
     <div className="space-y-4">
       <section className="app-card border-orange-500 bg-slate-800">
         <div className="grid grid-cols-2 gap-4 text-center">
-          <div>
+          <div className="flex flex-col justify-between">
             <p className="section-title">Temperatura interna</p>
             <p className="text-5xl font-bold tracking-tight text-slate-100">
               {state.data.temperatura.toFixed(1)} <span className="text-xl font-medium text-slate-400">°C</span>
             </p>
           </div>
-          <div>
+          <div className="flex flex-col justify-between">
             <p className="section-title">Umidità interna</p>
             <p className="text-5xl font-bold tracking-tight text-slate-100">
               {state.data.umidita.toFixed(1)} <span className="text-xl font-medium text-slate-400">%</span>

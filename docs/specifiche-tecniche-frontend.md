@@ -245,7 +245,10 @@ presente una chiave in `localStorage`, mostra la schermata di inserimento chiave
 (vedi 6.7) prima di ogni altra funzionalità.
 
 L'app è organizzata in **due aree**, selezionabili con un **selettore d'area
-nell'header** (tabs "🏠 Termostato" e "💡 Dispositivi"). L'area attiva è derivata
+nell'header** (tabs "🏠 Termostato" e "💡 Dispositivi"). Il tab "💡 Dispositivi"
+apre di default la sottosezione **Monitor** (`/shelly/monitor`); la pagina
+Dispositivi resta raggiungibile dalla relativa voce della bottom navigation.
+L'area attiva è derivata
 dal pathname (`/shelly`… → area Dispositivi). La **bottom navigation cambia in
 base all'area**:
 
@@ -255,9 +258,9 @@ base all'area**:
   "Configurazione sistema" della schermata Impostazioni (così la barra non viene
   sovraccaricata con una sesta voce). La schermata Stato è la destinazione
   iniziale dopo il gate.
-- **Area Dispositivi** — 2 voci: **Dispositivi** (`/shelly`, pagina iniziale
-  dell'area con elenco e comando dei relè) e **Monitor**
-  (`/shelly/monitor`, consumo istantaneo). Non esistono pagine di storico dei
+- **Area Dispositivi** — 2 voci: **Monitor** (`/shelly/monitor`, consumo
+  istantaneo) e **Dispositivi** (`/shelly`, pagina con elenco e comando dei
+  relè). Non esistono pagine di storico dei
   consumi: il backend non registra le misure.
 
 ### 6.1 Schermata Stato corrente (`/stato`)
